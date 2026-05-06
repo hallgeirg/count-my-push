@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { z } from "zod";
-import { getSql } from "./_lib/db";
-import { sendJson } from "./_lib/json";
+import { getSql } from "./_lib/db.js";
+import { sendJson } from "./_lib/json.js";
 
 const patchSchema = z
   .object({

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { z } from "zod";
-import { getSql } from "./_lib/db";
-import { sendJson } from "./_lib/json";
+import { getSql } from "./_lib/db.js";
+import { sendJson } from "./_lib/json.js";
 
 const postSchema = z.object({
   count: z.number().int().min(1).max(500),

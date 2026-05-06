@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getPeriodBounds, resolveTimeZone } from "./_lib/buckets";
-import { getSql } from "./_lib/db";
-import { sendJson } from "./_lib/json";
+import { getPeriodBounds, resolveTimeZone } from "./_lib/buckets.js";
+import { getSql } from "./_lib/db.js";
+import { sendJson } from "./_lib/json.js";
 
 function normalizeQuickAdd(raw: unknown): number[] {
   if (!Array.isArray(raw)) return [10, 20, 30];
