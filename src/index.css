@@ -57,6 +57,30 @@ input {
   color: inherit;
 }
 
+button:where(:not(:disabled)) {
+  transition:
+    background 0.2s var(--ease-out-quart),
+    border-color 0.2s var(--ease-out-quart),
+    opacity 0.15s var(--ease-out-quart),
+    transform 0.12s var(--ease-out-quart);
+}
+
+@media (hover: hover) {
+  button:where(:not(:disabled)):hover {
+    filter: brightness(1.05);
+  }
+}
+
+button:where(:not(:disabled)):active {
+  opacity: 0.92;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:where(:not(:disabled)) {
+    transition: none;
+  }
+}
+
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;

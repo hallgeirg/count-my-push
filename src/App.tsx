@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DailyRing } from "./components/DailyRing";
 import { FeedbackToast } from "./components/FeedbackToast";
 import { LinearGoal } from "./components/LinearGoal";
@@ -32,37 +32,46 @@ export default function App() {
   const [pulseKey, setPulseKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const toastHideRef = useRef<number | null>(null);
 
   const refresh = useCallback(async () => {
     const s = await fetchState(timeZone);
     setState(s);
   }, [timeZone]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const s = await fetchState(timeZone);
-        if (!cancelled) setState(s);
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Could not load data.");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+  const loadState = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const s = await fetchState(timeZone);
+      setState(s);
+    } catch (e) {
+      setState(null);
+      setError(e instanceof Error ? e.message : "Could not load data.");
+    } finally {
+      setLoading(false);
+    }
   }, [timeZone]);
 
+  useEffect(() => {
+    void loadState();
+  }, [loadState]);
+
+  useEffect(() => {
+    return () => {
+      if (toastHideRef.current != null) window.clearTimeout(toastHideRef.current);
+    };
+  }, []);
+
   function showToast(message: string, variant: "success" | "milestone") {
+    if (toastHideRef.current != null) window.clearTimeout(toastHideRef.current);
     setToastVariant(variant);
     setToast(message);
-    window.setTimeout(() => setToast(null), variant === "milestone" ? 2400 : 1800);
+    const ms = variant === "milestone" ? 2400 : 1800;
+    toastHideRef.current = window.setTimeout(() => {
+      setToast(null);
+      toastHideRef.current = null;
+    }, ms);
   }
 
   async function onAdd(n: number) {
@@ -113,7 +122,7 @@ export default function App() {
   }
 
   return (
-    <div
+    <main
       style={{
         minHeight: "100%",
         maxWidth: 520,
@@ -158,11 +167,14 @@ export default function App() {
       </header>
 
       {loading ? (
-        <div style={{ color: "var(--muted)", marginTop: 18 }}>Loading…</div>
+        <div role="status" aria-live="polite" style={{ color: "var(--muted)", marginTop: 18 }}>
+          Loading…
+        </div>
       ) : null}
 
       {error ? (
         <div
+          role="alert"
           style={{
             marginTop: 14,
             border: "1px solid rgba(255,92,92,0.35)",
@@ -174,6 +186,50 @@ export default function App() {
           }}
         >
           {error}
+          <div
+            style={{
+              marginTop: 12,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 10,
+            }}
+          >
+            {!state ? (
+              <button
+                type="button"
+                onClick={() => void loadState()}
+                disabled={loading}
+                style={{
+                  minHeight: 44,
+                  padding: "0 16px",
+                  borderRadius: "var(--radius-pill)",
+                  border: "1px solid rgba(255,92,92,0.45)",
+                  background: "rgba(255,255,255,0.08)",
+                  color: "var(--text)",
+                  fontWeight: 700,
+                  cursor: loading ? "wait" : "pointer",
+                }}
+              >
+                Try again
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              style={{
+                minHeight: 44,
+                padding: "0 16px",
+                borderRadius: "var(--radius-pill)",
+                border: "1px solid var(--line)",
+                background: "transparent",
+                color: "var(--muted)",
+                fontWeight: 650,
+                cursor: "pointer",
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -230,6 +286,6 @@ export default function App() {
       ) : null}
 
       <FeedbackToast message={toast} variant={toastVariant} />
-    </div>
+    </main>
   );
 }

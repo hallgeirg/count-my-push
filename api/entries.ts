@@ -20,8 +20,6 @@ function readBody(req: VercelRequest): unknown {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const sql = getSql();
-
   if (req.method === "POST") {
     const parsed = postSchema.safeParse(readBody(req));
     if (!parsed.success) {
@@ -32,6 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const at = new Date();
 
     try {
+      const sql = getSql();
       const rows = await sql`
         INSERT INTO entries (count, performed_at)
         VALUES (${count}, ${at})
@@ -69,6 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     const id = idParsed.data;
     try {
+      const sql = getSql();
       const rows = await sql`
         DELETE FROM entries WHERE id = ${id} RETURNING id
       `;

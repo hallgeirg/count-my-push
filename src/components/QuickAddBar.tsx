@@ -10,6 +10,7 @@ export function QuickAddBar({ amounts, disabled, onAdd }: Props) {
   const reduceMotion = useReducedMotion();
   return (
     <div
+      aria-busy={disabled || undefined}
       style={{
         display: "grid",
         gridTemplateColumns: `repeat(${amounts.length}, minmax(0, 1fr))`,
