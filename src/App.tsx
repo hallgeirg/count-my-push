@@ -1,7 +1,9 @@
+import { motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DailyRing } from "./components/DailyRing";
 import { FeedbackToast } from "./components/FeedbackToast";
 import { LinearGoal } from "./components/LinearGoal";
+import { LoadingHint } from "./components/LoadingHint";
 import { QuickAddBar } from "./components/QuickAddBar";
 import { RecentEntries } from "./components/RecentEntries";
 import { SettingsSheet } from "./components/SettingsSheet";
@@ -16,6 +18,7 @@ import { randomMilestoneLine, randomSuccessLine } from "./lib/delight";
 import type { AppState } from "./types";
 
 export default function App() {
+  const reduceMotion = useReducedMotion();
   const timeZone = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone,
     [],
@@ -34,6 +37,21 @@ export default function App() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const toastHideRef = useRef<number | null>(null);
 
+  const dashItem = useMemo(
+    () => ({
+      hidden: reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 },
+      visible: {
+        opacity: 1,
+        y: 0,
+        transition: {
+          duration: reduceMotion ? 0 : 0.2,
+          ease: [0.22, 1, 0.36, 1] as const,
+        },
+      },
+    }),
+    [reduceMotion],
+  );
+
   const refresh = useCallback(async () => {
     const s = await fetchState(timeZone);
     setState(s);
@@ -47,7 +65,11 @@ export default function App() {
       setState(s);
     } catch (e) {
       setState(null);
-      setError(e instanceof Error ? e.message : "Could not load data.");
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Couldn’t reach the server. Check your connection and try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -144,7 +166,7 @@ export default function App() {
             Count My Push
           </div>
           <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 6, lineHeight: 1.35 }}>
-            Tap a set. Track the week. Keep it stupidly simple.
+            One tap to log. Let the ring do the cheering.
           </div>
         </div>
         <button
@@ -159,18 +181,18 @@ export default function App() {
             color: "var(--text)",
             cursor: "pointer",
             fontWeight: 800,
+            fontSize: 20,
+            lineHeight: 1,
+            display: "grid",
+            placeItems: "center",
           }}
           aria-label="Open settings"
         >
-          ···
+          <span aria-hidden>⚙</span>
         </button>
       </header>
 
-      {loading ? (
-        <div role="status" aria-live="polite" style={{ color: "var(--muted)", marginTop: 18 }}>
-          Loading…
-        </div>
-      ) : null}
+      {loading ? <LoadingHint /> : null}
 
       {error ? (
         <div
@@ -234,17 +256,31 @@ export default function App() {
       ) : null}
 
       {state ? (
-        <>
-          <div style={{ height: 10 }} />
-          <DailyRing
-            total={state.totals.daily}
-            goal={state.goals.dailyGoal}
-            pulseKey={pulseKey}
-          />
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: {
+              transition: reduceMotion
+                ? { duration: 0 }
+                : { staggerChildren: 0.045, delayChildren: 0.02 },
+            },
+          }}
+          style={{ display: "flex", flexDirection: "column", width: "100%" }}
+        >
+          <motion.div variants={dashItem} style={{ paddingTop: 10 }}>
+            <DailyRing
+              total={state.totals.daily}
+              goal={state.goals.dailyGoal}
+              pulseKey={pulseKey}
+            />
+          </motion.div>
 
-          <div style={{ height: 10 }} />
-          <div
+          <motion.div
+            variants={dashItem}
             style={{
+              marginTop: 10,
               borderRadius: "var(--radius-card)",
               border: "1px solid var(--line)",
               background: "rgba(255,255,255,0.03)",
@@ -262,17 +298,20 @@ export default function App() {
               total={state.totals.monthly}
               goal={state.goals.monthlyGoal}
             />
-          </div>
+          </motion.div>
 
-          <div style={{ height: 14 }} />
-          <QuickAddBar amounts={state.quickAdd} disabled={busy} onAdd={onAdd} />
+          <motion.div variants={dashItem} style={{ marginTop: 14 }}>
+            <QuickAddBar amounts={state.quickAdd} disabled={busy} onAdd={onAdd} />
+          </motion.div>
 
-          <RecentEntries
-            entries={state.recentEntries}
-            busyId={deletingId}
-            onDelete={onDelete}
-          />
-        </>
+          <motion.div variants={dashItem} style={{ width: "100%" }}>
+            <RecentEntries
+              entries={state.recentEntries}
+              busyId={deletingId}
+              onDelete={onDelete}
+            />
+          </motion.div>
+        </motion.div>
       ) : null}
 
       {state ? (

@@ -21,12 +21,13 @@ export function QuickAddBar({ amounts, disabled, onAdd }: Props) {
         <motion.button
           key={n}
           type="button"
+          className="quick-add-tap"
           disabled={disabled}
           onClick={() => onAdd(n)}
           whileTap={
-            reduceMotion || disabled ? undefined : { scale: 0.96, opacity: 0.92 }
+            reduceMotion || disabled ? undefined : { scale: 0.97, opacity: 0.9 }
           }
-          transition={{ duration: 0.12, ease: [0.25, 1, 0.5, 1] }}
+          transition={{ duration: 0.1, ease: [0.25, 1, 0.5, 1] }}
           style={{
             minHeight: 52,
             borderRadius: "var(--radius-pill)",

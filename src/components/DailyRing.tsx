@@ -23,14 +23,14 @@ export function DailyRing({ total, goal, pulseKey }: Props) {
         marginInline: "auto",
       }}
     >
-      <motion.div
+        <motion.div
         key={pulseKey}
-        initial={reduceMotion ? false : { scale: 1, opacity: 0.85 }}
-        animate={reduceMotion ? undefined : { scale: [1, 1.03, 1], opacity: [0.85, 1, 0.95] }}
+        initial={reduceMotion ? false : { scale: 1, opacity: 0.88 }}
+        animate={reduceMotion ? undefined : { scale: [1, 1.035, 1], opacity: [0.88, 1, 0.94] }}
         transition={
           reduceMotion
             ? undefined
-            : { duration: 0.45, ease: [0.22, 1, 0.36, 1] }
+            : { duration: 0.38, ease: [0.22, 1, 0.36, 1] }
         }
         style={{
           position: "absolute",
@@ -72,7 +72,7 @@ export function DailyRing({ total, goal, pulseKey }: Props) {
           transition={
             reduceMotion
               ? { duration: 0 }
-              : { duration: 0.55, ease: [0.25, 1, 0.5, 1] }
+              : { duration: 0.4, ease: [0.25, 1, 0.5, 1] }
           }
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
           style={{
@@ -99,7 +99,18 @@ export function DailyRing({ total, goal, pulseKey }: Props) {
               lineHeight: 1,
             }}
           >
-            {total}
+            <motion.span
+              key={total}
+              initial={reduceMotion ? false : { scale: 1.12, opacity: 0.75 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{
+                duration: reduceMotion ? 0 : 0.18,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              style={{ display: "inline-block", transformOrigin: "50% 60%" }}
+            >
+              {total}
+            </motion.span>
             <span style={{ color: "var(--muted)", fontWeight: 600, fontSize: 18 }}>
               {" "}
               / {goal}

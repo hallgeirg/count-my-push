@@ -1,4 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
+import { useMemo } from "react";
+import { randomEmptyRecentLine } from "../lib/delight";
 
 type Entry = { id: number; count: number; performedAt: string };
 
@@ -18,6 +20,8 @@ function formatTime(iso: string) {
 
 export function RecentEntries({ entries, busyId, onDelete }: Props) {
   const reduceMotion = useReducedMotion();
+  const emptyLine = useMemo(() => randomEmptyRecentLine(), []);
+
   return (
     <div style={{ marginTop: 18 }}>
       <div
@@ -34,18 +38,14 @@ export function RecentEntries({ entries, busyId, onDelete }: Props) {
       </div>
 
       {entries.length === 0 ? (
-        <div
-          style={{
-            border: "1px dashed var(--line)",
-            borderRadius: 16,
-            padding: 16,
-            color: "var(--muted)",
-            lineHeight: 1.45,
-            fontSize: 14,
-          }}
+        <motion.div
+          className="empty-recent-card"
+          initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
         >
-          Tap a quick add to log your first set. Small reps, big weeks.
-        </div>
+          {emptyLine}
+        </motion.div>
       ) : (
         <div style={{ display: "grid", gap: 8 }}>
           {entries.slice(0, 8).map((e) => (
@@ -54,7 +54,7 @@ export function RecentEntries({ entries, busyId, onDelete }: Props) {
               layout={!reduceMotion}
               initial={reduceMotion ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+              transition={{ duration: 0.18, ease: [0.25, 1, 0.5, 1] }}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -77,11 +77,13 @@ export function RecentEntries({ entries, busyId, onDelete }: Props) {
                 onClick={() => onDelete(e.id)}
                 disabled={busyId === e.id}
                 style={{
+                  minWidth: 44,
+                  minHeight: 44,
                   borderRadius: 12,
                   border: "1px solid var(--line)",
                   background: "transparent",
                   color: "var(--muted)",
-                  padding: "10px 12px",
+                  padding: "10px 14px",
                   cursor: busyId === e.id ? "wait" : "pointer",
                 }}
                 aria-label={`Delete log of ${e.count} pushups`}

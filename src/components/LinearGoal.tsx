@@ -47,7 +47,7 @@ export function LinearGoal({ label, total, goal }: Props) {
           transition={
             reduceMotion
               ? { duration: 0 }
-              : { duration: 0.45, ease: [0.25, 1, 0.5, 1] }
+              : { duration: 0.32, ease: [0.25, 1, 0.5, 1] }
           }
           style={{
             height: "100%",
