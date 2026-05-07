@@ -17,7 +17,7 @@ export function FeedbackToast({ message, variant = "success" }: Props) {
           initial={reduceMotion ? false : { opacity: 0, y: 12, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={reduceMotion ? undefined : { opacity: 0, y: 6, scale: 0.99 }}
-          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
           style={{
             position: "fixed",
             left: 14,
@@ -45,9 +45,19 @@ export function FeedbackToast({ message, variant = "success" }: Props) {
                 : "0 18px 60px rgba(0,0,0,0.45)",
           }}
         >
-          <span aria-hidden style={{ marginRight: 8, opacity: 0.9 }}>
+          <motion.span
+            aria-hidden
+            initial={reduceMotion ? false : { scale: 0.85, opacity: 0 }}
+            animate={{ scale: 1, opacity: 0.95 }}
+            transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+            style={{
+              marginRight: 8,
+              display: "inline-block",
+              transformOrigin: "50% 55%",
+            }}
+          >
             {variant === "milestone" ? "★" : "✓"}
-          </span>
+          </motion.span>
           {message}
         </motion.div>
       ) : null}

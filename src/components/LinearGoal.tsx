@@ -23,8 +23,24 @@ export function LinearGoal({ label, total, goal }: Props) {
         <div style={{ color: "var(--muted)", fontSize: 12, letterSpacing: "0.06em" }}>
           {label}
         </div>
-        <div style={{ fontSize: 13, fontWeight: 650, color: "var(--text)" }}>
-          {total}
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 650,
+            color: "var(--text)",
+            fontFamily: "var(--font-display)",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          <motion.span
+            key={total}
+            initial={reduceMotion ? false : { opacity: 0.65, y: 2 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.12, ease: [0.22, 1, 0.36, 1] }}
+            style={{ display: "inline-block" }}
+          >
+            {total}
+          </motion.span>
           <span style={{ color: "var(--muted)", fontWeight: 600 }}> / {goal}</span>
         </div>
       </div>
@@ -47,7 +63,7 @@ export function LinearGoal({ label, total, goal }: Props) {
           transition={
             reduceMotion
               ? { duration: 0 }
-              : { duration: 0.32, ease: [0.25, 1, 0.5, 1] }
+              : { duration: 0.26, ease: [0.25, 1, 0.5, 1] }
           }
           style={{
             height: "100%",

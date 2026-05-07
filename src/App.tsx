@@ -39,12 +39,12 @@ export default function App() {
 
   const dashItem = useMemo(
     () => ({
-      hidden: reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 },
+      hidden: reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 },
       visible: {
         opacity: 1,
         y: 0,
         transition: {
-          duration: reduceMotion ? 0 : 0.2,
+          duration: reduceMotion ? 0 : 0.16,
           ease: [0.22, 1, 0.36, 1] as const,
         },
       },
@@ -152,7 +152,10 @@ export default function App() {
         padding: "calc(18px + env(safe-area-inset-top)) 18px calc(22px + env(safe-area-inset-bottom))",
       }}
     >
-      <header
+      <motion.header
+        initial={reduceMotion ? false : { opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
         style={{
           display: "flex",
           alignItems: "flex-start",
@@ -162,10 +165,13 @@ export default function App() {
         }}
       >
         <div>
-          <div style={{ fontSize: 18, fontWeight: 850, letterSpacing: "-0.03em" }}>
+          <div className="app-title" style={{ fontSize: 19 }}>
             Count My Push
           </div>
-          <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 6, lineHeight: 1.35 }}>
+          <div
+            className="app-tagline"
+            style={{ color: "var(--muted)", fontSize: 13, marginTop: 6, lineHeight: 1.35 }}
+          >
             One tap to log. Let the ring do the cheering.
           </div>
         </div>
@@ -190,13 +196,14 @@ export default function App() {
         >
           <span aria-hidden>⚙</span>
         </button>
-      </header>
+      </motion.header>
 
       {loading ? <LoadingHint /> : null}
 
       {error ? (
         <div
           role="alert"
+          className="error-banner"
           style={{
             marginTop: 14,
             border: "1px solid rgba(255,92,92,0.35)",
@@ -207,50 +214,56 @@ export default function App() {
             lineHeight: 1.4,
           }}
         >
-          {error}
-          <div
-            style={{
-              marginTop: 12,
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 10,
-            }}
-          >
-            {!state ? (
+          <span className="error-banner__icon" aria-hidden>
+            !
+          </span>
+          <div className="error-banner__body">
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>Something slipped.</div>
+            <div style={{ color: "rgba(242,243,239,0.88)" }}>{error}</div>
+            <div
+              style={{
+                marginTop: 12,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 10,
+              }}
+            >
+              {!state ? (
+                <button
+                  type="button"
+                  onClick={() => void loadState()}
+                  disabled={loading}
+                  style={{
+                    minHeight: 44,
+                    padding: "0 16px",
+                    borderRadius: "var(--radius-pill)",
+                    border: "1px solid rgba(255,92,92,0.45)",
+                    background: "rgba(255,255,255,0.08)",
+                    color: "var(--text)",
+                    fontWeight: 700,
+                    cursor: loading ? "wait" : "pointer",
+                  }}
+                >
+                  Try again
+                </button>
+              ) : null}
               <button
                 type="button"
-                onClick={() => void loadState()}
-                disabled={loading}
+                onClick={() => setError(null)}
                 style={{
                   minHeight: 44,
                   padding: "0 16px",
                   borderRadius: "var(--radius-pill)",
-                  border: "1px solid rgba(255,92,92,0.45)",
-                  background: "rgba(255,255,255,0.08)",
-                  color: "var(--text)",
-                  fontWeight: 700,
-                  cursor: loading ? "wait" : "pointer",
+                  border: "1px solid var(--line)",
+                  background: "transparent",
+                  color: "var(--muted)",
+                  fontWeight: 650,
+                  cursor: "pointer",
                 }}
               >
-                Try again
+                Dismiss
               </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setError(null)}
-              style={{
-                minHeight: 44,
-                padding: "0 16px",
-                borderRadius: "var(--radius-pill)",
-                border: "1px solid var(--line)",
-                background: "transparent",
-                color: "var(--muted)",
-                fontWeight: 650,
-                cursor: "pointer",
-              }}
-            >
-              Dismiss
-            </button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -264,7 +277,7 @@ export default function App() {
             visible: {
               transition: reduceMotion
                 ? { duration: 0 }
-                : { staggerChildren: 0.045, delayChildren: 0.02 },
+                : { staggerChildren: 0.032, delayChildren: 0.012 },
             },
           }}
           style={{ display: "flex", flexDirection: "column", width: "100%" }}
@@ -279,6 +292,7 @@ export default function App() {
 
           <motion.div
             variants={dashItem}
+            className="goals-panel"
             style={{
               marginTop: 10,
               borderRadius: "var(--radius-card)",

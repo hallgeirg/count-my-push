@@ -23,14 +23,16 @@ export function DailyRing({ total, goal, pulseKey }: Props) {
         marginInline: "auto",
       }}
     >
-        <motion.div
+      <motion.div
         key={pulseKey}
         initial={reduceMotion ? false : { scale: 1, opacity: 0.88 }}
-        animate={reduceMotion ? undefined : { scale: [1, 1.035, 1], opacity: [0.88, 1, 0.94] }}
+        animate={
+          reduceMotion ? undefined : { scale: [1, 1.04, 1], opacity: [0.88, 1, 0.94] }
+        }
         transition={
           reduceMotion
             ? undefined
-            : { duration: 0.38, ease: [0.22, 1, 0.36, 1] }
+            : { duration: 0.32, ease: [0.22, 1, 0.36, 1] }
         }
         style={{
           position: "absolute",
@@ -72,7 +74,7 @@ export function DailyRing({ total, goal, pulseKey }: Props) {
           transition={
             reduceMotion
               ? { duration: 0 }
-              : { duration: 0.4, ease: [0.25, 1, 0.5, 1] }
+              : { duration: 0.32, ease: [0.25, 1, 0.5, 1] }
           }
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
           style={{
@@ -93,18 +95,19 @@ export function DailyRing({ total, goal, pulseKey }: Props) {
         <div style={{ textAlign: "center" }}>
           <div
             style={{
+              fontFamily: "var(--font-display)",
               fontSize: 44,
-              fontWeight: 750,
+              fontWeight: 800,
               letterSpacing: "-0.04em",
               lineHeight: 1,
             }}
           >
             <motion.span
               key={total}
-              initial={reduceMotion ? false : { scale: 1.12, opacity: 0.75 }}
+              initial={reduceMotion ? false : { scale: 1.1, opacity: 0.72 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{
-                duration: reduceMotion ? 0 : 0.18,
+                duration: reduceMotion ? 0 : 0.14,
                 ease: [0.22, 1, 0.36, 1],
               }}
               style={{ display: "inline-block", transformOrigin: "50% 60%" }}

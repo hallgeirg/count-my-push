@@ -262,7 +262,7 @@ function Field({
   inputMode?: "numeric" | "text";
 }) {
   return (
-    <label style={{ display: "grid", gap: 6 }}>
+    <label className="settings-field" style={{ display: "grid", gap: 6 }}>
       <span style={{ color: "var(--muted)", fontSize: 12 }}>{label}</span>
       <input
         value={value}

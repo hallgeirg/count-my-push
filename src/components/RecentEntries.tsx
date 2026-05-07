@@ -42,7 +42,7 @@ export function RecentEntries({ entries, busyId, onDelete }: Props) {
           className="empty-recent-card"
           initial={reduceMotion ? false : { opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
         >
           {emptyLine}
         </motion.div>
@@ -54,7 +54,7 @@ export function RecentEntries({ entries, busyId, onDelete }: Props) {
               layout={!reduceMotion}
               initial={reduceMotion ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.18, ease: [0.25, 1, 0.5, 1] }}
+              transition={{ duration: 0.15, ease: [0.25, 1, 0.5, 1] }}
               style={{
                 display: "flex",
                 alignItems: "center",
