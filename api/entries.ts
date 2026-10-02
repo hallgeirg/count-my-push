@@ -72,7 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const rows = await sql`
         DELETE FROM entries WHERE id = ${id} RETURNING id
       `;
-      if (rows.length === 0) {
+      if (!Array.isArray(rows) || rows.length === 0) {
         sendJson(res, 404, { error: "Not found" });
         return;
       }
