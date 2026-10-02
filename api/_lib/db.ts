@@ -1,6 +1,8 @@
-import { neon } from "@neondatabase/serverless";
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 
-let sql: ReturnType<typeof neon> | null = null;
+// neon() without options returns plain row arrays; ReturnType<typeof neon> would widen
+// that to every result mode and make rows[0] fail strict typechecking.
+let sql: NeonQueryFunction<false, false> | null = null;
 
 /** Neon/Vercel strings may include channel_binding; the serverless driver is happier without it. */
 function normalizeConnectionString(connectionString: string): string {
