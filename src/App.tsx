@@ -17,6 +17,15 @@ import {
 import { randomMilestoneLine, randomSuccessLine } from "./lib/delight";
 import type { AppState } from "./types";
 
+function calendarDayKeyInTimeZone(tz: string) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 export default function App() {
   const reduceMotion = useReducedMotion();
   const timeZone = useMemo(
@@ -33,9 +42,10 @@ export default function App() {
     "success",
   );
   const [pulseKey, setPulseKey] = useState(0);
-  const [busy, setBusy] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const toastHideRef = useRef<number | null>(null);
+  const optimisticIdRef = useRef(-1);
+  const lastCalendarDayRef = useRef<string | null>(null);
 
   const dashItem = useMemo(
     () => ({
@@ -55,6 +65,7 @@ export default function App() {
   const refresh = useCallback(async () => {
     const s = await fetchState(timeZone);
     setState(s);
+    lastCalendarDayRef.current = calendarDayKeyInTimeZone(timeZone);
   }, [timeZone]);
 
   const loadState = useCallback(async () => {
@@ -63,6 +74,7 @@ export default function App() {
     try {
       const s = await fetchState(timeZone);
       setState(s);
+      lastCalendarDayRef.current = calendarDayKeyInTimeZone(timeZone);
     } catch (e) {
       setState(null);
       setError(
@@ -78,6 +90,25 @@ export default function App() {
   useEffect(() => {
     void loadState();
   }, [loadState]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const next = calendarDayKeyInTimeZone(timeZone);
+      if (lastCalendarDayRef.current !== next) {
+        lastCalendarDayRef.current = next;
+        void refresh();
+      }
+    }, 60_000);
+    return () => window.clearInterval(id);
+  }, [timeZone, refresh]);
+
+  useEffect(() => {
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") void refresh();
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [refresh]);
 
   useEffect(() => {
     return () => {
@@ -97,31 +128,94 @@ export default function App() {
   }
 
   async function onAdd(n: number) {
-    if (!state) return;
-    setBusy(true);
+    if (!state || n < 1) return;
     setError(null);
-    const beforeDaily = state.totals.daily;
-    const goal = state.goals.dailyGoal;
-    try {
-      await postEntry(n);
-      const s = await fetchState(timeZone);
-      setState(s);
-      setPulseKey((k) => k + 1);
+    const optimisticId = optimisticIdRef.current--;
+    const optimisticTime = new Date().toISOString();
+    let shouldCelebrateMilestone = false;
 
-      const afterDaily = s.totals.daily;
-      if (beforeDaily < goal && afterDaily >= goal) {
-        showToast(randomMilestoneLine(), "milestone");
-      } else {
-        showToast(randomSuccessLine(), "success");
+    setState((prev) => {
+      if (!prev) return prev;
+      const nextDaily = prev.totals.daily + n;
+      shouldCelebrateMilestone =
+        prev.totals.daily < prev.goals.dailyGoal &&
+        nextDaily >= prev.goals.dailyGoal;
+      return {
+        ...prev,
+        totals: {
+          daily: nextDaily,
+          weekly: prev.totals.weekly + n,
+          monthly: prev.totals.monthly + n,
+        },
+        recentEntries: [
+          { id: optimisticId, count: n, performedAt: optimisticTime },
+          ...prev.recentEntries,
+        ].slice(0, 25),
+      };
+    });
+    setPulseKey((k) => k + 1);
+    showToast(
+      shouldCelebrateMilestone ? randomMilestoneLine() : randomSuccessLine(),
+      shouldCelebrateMilestone ? "milestone" : "success",
+    );
+
+    try {
+      const { entry } = await postEntry(n);
+      setState((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          recentEntries: prev.recentEntries.map((e) =>
+            e.id === optimisticId ? entry : e,
+          ),
+        };
+      });
+      try {
+        await refresh();
+      } catch (refreshErr) {
+        setError(
+          refreshErr instanceof Error
+            ? refreshErr.message
+            : "Saved, but couldn’t refresh totals. Reopen the app or try again.",
+        );
       }
     } catch (e) {
+      // Roll back optimistic set if the backend call fails.
+      setState((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          totals: {
+            daily: Math.max(0, prev.totals.daily - n),
+            weekly: Math.max(0, prev.totals.weekly - n),
+            monthly: Math.max(0, prev.totals.monthly - n),
+          },
+          recentEntries: prev.recentEntries.filter((r) => r.id !== optimisticId),
+        };
+      });
       setError(e instanceof Error ? e.message : "Could not log set.");
-    } finally {
-      setBusy(false);
     }
   }
 
   async function onDelete(id: number) {
+    if (id < 0) {
+      setState((prev) => {
+        if (!prev) return prev;
+        const target = prev.recentEntries.find((e) => e.id === id);
+        if (!target) return prev;
+        return {
+          ...prev,
+          totals: {
+            daily: Math.max(0, prev.totals.daily - target.count),
+            weekly: Math.max(0, prev.totals.weekly - target.count),
+            monthly: Math.max(0, prev.totals.monthly - target.count),
+          },
+          recentEntries: prev.recentEntries.filter((e) => e.id !== id),
+        };
+      });
+      return;
+    }
+
     setDeletingId(id);
     setError(null);
     try {
@@ -315,7 +409,7 @@ export default function App() {
           </motion.div>
 
           <motion.div variants={dashItem} style={{ marginTop: 14 }}>
-            <QuickAddBar amounts={state.quickAdd} disabled={busy} onAdd={onAdd} />
+            <QuickAddBar amounts={state.quickAdd} onAdd={onAdd} />
           </motion.div>
 
           <motion.div variants={dashItem} style={{ width: "100%" }}>
