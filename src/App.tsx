@@ -46,6 +46,8 @@ export default function App() {
   const toastHideRef = useRef<number | null>(null);
   const optimisticIdRef = useRef(-1);
   const lastCalendarDayRef = useRef<string | null>(null);
+  /** Daily total including taps not yet rendered, so rapid taps see each other. */
+  const dailyRef = useRef<number | null>(null);
 
   const dashItem = useMemo(
     () => ({
@@ -111,6 +113,10 @@ export default function App() {
   }, [refresh]);
 
   useEffect(() => {
+    dailyRef.current = state?.totals.daily ?? null;
+  }, [state]);
+
+  useEffect(() => {
     return () => {
       if (toastHideRef.current != null) window.clearTimeout(toastHideRef.current);
     };
@@ -132,18 +138,18 @@ export default function App() {
     setError(null);
     const optimisticId = optimisticIdRef.current--;
     const optimisticTime = new Date().toISOString();
-    let shouldCelebrateMilestone = false;
+    const prevDaily = dailyRef.current ?? state.totals.daily;
+    dailyRef.current = prevDaily + n;
+    const shouldCelebrateMilestone =
+      prevDaily < state.goals.dailyGoal &&
+      prevDaily + n >= state.goals.dailyGoal;
 
     setState((prev) => {
       if (!prev) return prev;
-      const nextDaily = prev.totals.daily + n;
-      shouldCelebrateMilestone =
-        prev.totals.daily < prev.goals.dailyGoal &&
-        nextDaily >= prev.goals.dailyGoal;
       return {
         ...prev,
         totals: {
-          daily: nextDaily,
+          daily: prev.totals.daily + n,
           weekly: prev.totals.weekly + n,
           monthly: prev.totals.monthly + n,
         },
