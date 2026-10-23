@@ -89,6 +89,15 @@ export default function App() {
     }
   }, [timeZone]);
 
+  const refreshInBackground = useCallback(async () => {
+    try {
+      await refresh();
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not refresh. Check your connection.");
+    }
+  }, [refresh]);
+
   useEffect(() => {
     void loadState();
   }, [loadState]);
@@ -97,20 +106,19 @@ export default function App() {
     const id = window.setInterval(() => {
       const next = calendarDayKeyInTimeZone(timeZone);
       if (lastCalendarDayRef.current !== next) {
-        lastCalendarDayRef.current = next;
-        void refresh();
+        void refreshInBackground();
       }
     }, 60_000);
     return () => window.clearInterval(id);
-  }, [timeZone, refresh]);
+  }, [timeZone, refreshInBackground]);
 
   useEffect(() => {
     function onVisibilityChange() {
-      if (document.visibilityState === "visible") void refresh();
+      if (document.visibilityState === "visible") void refreshInBackground();
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [refresh]);
+  }, [refreshInBackground]);
 
   useEffect(() => {
     dailyRef.current = state?.totals.daily ?? null;
