@@ -1,0 +1,10 @@
+const path = require('node:path');
+const fs = require('node:fs');
+const { createRequire } = require('node:module');
+const root = path.resolve(__dirname, '../../..');
+const deps = process.argv[2] || path.join(root, 'node_modules');
+const out = process.argv[3] || '/tmp/count-push-race-1540';
+fs.mkdirSync(out, { recursive: true });
+const req = createRequire(path.join(deps, 'esbuild/package.json'));
+req('esbuild').buildSync({ stdin: { contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import App from '${root}/src/App'; import '${root}/src/index.css'; createRoot(document.getElementById('root')).render(<App/>);`, resolveDir: root, loader: 'tsx' }, bundle: true, outfile: path.join(out, 'bundle.js'), nodePaths: [deps], jsx: 'automatic', define: {'process.env.NODE_ENV': '"development"'}, logLevel: 'silent' });
+fs.copyFileSync(path.join(__dirname, 'index.html'), path.join(out, 'index.html'));
