@@ -36,6 +36,8 @@ export default function App() {
   const [state, setState] = useState<AppState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [backgroundError, setBackgroundError] = useState<string | null>(null);
+  const displayedError = error ?? backgroundError;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [toastVariant, setToastVariant] = useState<"success" | "milestone">(
@@ -70,9 +72,20 @@ export default function App() {
     lastCalendarDayRef.current = calendarDayKeyInTimeZone(timeZone);
   }, [timeZone]);
 
+  const refreshInBackground = useCallback(() => {
+    void refresh().then(() => setBackgroundError(null)).catch((e) => {
+      setBackgroundError(
+        e instanceof Error
+          ? e.message
+          : "Couldn’t refresh totals. Check your connection and try again.",
+      );
+    });
+  }, [refresh]);
+
   const loadState = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setBackgroundError(null);
     try {
       const s = await fetchState(timeZone);
       setState(s);
@@ -97,20 +110,19 @@ export default function App() {
     const id = window.setInterval(() => {
       const next = calendarDayKeyInTimeZone(timeZone);
       if (lastCalendarDayRef.current !== next) {
-        lastCalendarDayRef.current = next;
-        void refresh();
+        refreshInBackground();
       }
     }, 60_000);
     return () => window.clearInterval(id);
-  }, [timeZone, refresh]);
+  }, [timeZone, refreshInBackground]);
 
   useEffect(() => {
     function onVisibilityChange() {
-      if (document.visibilityState === "visible") void refresh();
+      if (document.visibilityState === "visible") refreshInBackground();
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [refresh]);
+  }, [refreshInBackground]);
 
   useEffect(() => {
     dailyRef.current = state?.totals.daily ?? null;
@@ -300,7 +312,7 @@ export default function App() {
 
       {loading ? <LoadingHint /> : null}
 
-      {error ? (
+      {displayedError ? (
         <div
           role="alert"
           className="error-banner"
@@ -319,7 +331,7 @@ export default function App() {
           </span>
           <div className="error-banner__body">
             <div style={{ fontWeight: 700, marginBottom: 4 }}>Something slipped.</div>
-            <div style={{ color: "rgba(242,243,239,0.88)" }}>{error}</div>
+            <div style={{ color: "rgba(242,243,239,0.88)" }}>{displayedError}</div>
             <div
               style={{
                 marginTop: 12,
@@ -349,7 +361,7 @@ export default function App() {
               ) : null}
               <button
                 type="button"
-                onClick={() => setError(null)}
+                onClick={() => { setError(null); setBackgroundError(null); }}
                 style={{
                   minHeight: 44,
                   padding: "0 16px",
