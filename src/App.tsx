@@ -204,23 +204,8 @@ export default function App() {
   }
 
   async function onDelete(id: number) {
-    if (id < 0) {
-      setState((prev) => {
-        if (!prev) return prev;
-        const target = prev.recentEntries.find((e) => e.id === id);
-        if (!target) return prev;
-        return {
-          ...prev,
-          totals: {
-            daily: Math.max(0, prev.totals.daily - target.count),
-            weekly: Math.max(0, prev.totals.weekly - target.count),
-            monthly: Math.max(0, prev.totals.monthly - target.count),
-          },
-          recentEntries: prev.recentEntries.filter((e) => e.id !== id),
-        };
-      });
-      return;
-    }
+    // Pending POSTs have no durable ID to delete. Undo becomes available after saving.
+    if (id < 0) return;
 
     setDeletingId(id);
     setError(null);
