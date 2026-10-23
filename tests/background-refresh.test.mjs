@@ -16,7 +16,7 @@ const savedState = (daily) => ({ goals: { dailyGoal: 50, weeklyGoal: 300, monthl
   quickAdd: [10, 20], totals: { daily, weekly: daily + 20, monthly: daily + 100 }, recentEntries: [] });
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
-function mount(responses) {
+function mount(responses, { postEntry = async () => { throw new Error("set rejected"); } } = {}) {
   let now = Date.parse("2026-10-23T12:00:00Z"), cursor = 0, effects = [], calls = 0;
   const slots = [], intervals = new Map(), listeners = new Map();
   const same = (a, b) => a && b && a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
@@ -54,7 +54,7 @@ function mount(responses) {
     if (name === "react") return react;
     if (name === "react/jsx-runtime") return { jsx, jsxs: jsx };
     if (name === "framer-motion") return { motion: new Proxy({}, { get: (_, name) => name }), useReducedMotion: () => true };
-    if (name === "./lib/api") return { postEntry: async () => { throw new Error("set rejected"); }, fetchState: async () => {
+    if (name === "./lib/api") return { postEntry, fetchState: async () => {
       calls++;
       assert.ok(responses.length, "no unexpected API request");
       const result = responses.shift();
@@ -150,4 +150,29 @@ test("background recovery preserves an intervening failed user operation", async
   await app.visible();
   assert.equal(app.daily, 10);
   assert.match(app.error, /set rejected/);
+});
+
+
+test("successful user mutation refresh retires an obsolete background error", async () => {
+  const app = mount([savedState(10), new Error("offline"), savedState(20)], {
+    postEntry: async () => ({ entry: { id: 1, count: 10, performedAt: "2026-10-23T12:00:00Z" } }),
+  });
+  await app.ready();
+  await app.visible();
+  assert.match(app.error, /offline/);
+  await app.add();
+  assert.equal(app.daily, 20);
+  assert.equal(app.error, "");
+  assert.equal(app.calls, 3);
+});
+
+test("failed user mutation refresh still reports its own failure", async () => {
+  const app = mount([savedState(10), new Error("offline"), new Error("saved but refresh failed")], {
+    postEntry: async () => ({ entry: { id: 1, count: 10, performedAt: "2026-10-23T12:00:00Z" } }),
+  });
+  await app.ready();
+  await app.visible();
+  await app.add();
+  assert.equal(app.daily, 20);
+  assert.match(app.error, /saved but refresh failed/);
 });

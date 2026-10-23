@@ -70,10 +70,11 @@ export default function App() {
     const s = await fetchState(timeZone);
     setState(s);
     lastCalendarDayRef.current = calendarDayKeyInTimeZone(timeZone);
+    setBackgroundError(null);
   }, [timeZone]);
 
   const refreshInBackground = useCallback(() => {
-    void refresh().then(() => setBackgroundError(null)).catch((e) => {
+    void refresh().catch((e) => {
       setBackgroundError(
         e instanceof Error
           ? e.message
