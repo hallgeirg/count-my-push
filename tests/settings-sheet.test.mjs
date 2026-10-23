@@ -23,6 +23,8 @@ function mount(amounts) {
     if (name === "framer-motion") return { AnimatePresence: "presence", motion: { div: "div" }, useReducedMotion: () => true };
     if (name === "react") return {
       useId: () => "settings-title",
+      useRef(initial) { const index = cursor++; if (!(index in state)) state[index] = { current: initial };
+        return state[index]; },
       useState(initial) { const index = cursor++; if (!(index in state)) state[index] = initial;
         return [state[index], value => { state[index] = value; }]; },
       useEffect(fn, deps) { const index = effectCursor++;
@@ -100,4 +102,37 @@ test("fewer than two amounts still fails before saving", async () => {
   await h.save();
   assert.equal(h.saves.length, 0);
   assert.match(h.text(h.render()), /Add at least two quick amounts/);
+});
+
+test("same-valued fresh background props preserve the open settings draft", async () => {
+  const h = mount([10, 20]);
+  h.setField("Daily goal", "60");
+  h.setField("Amount 1", "7");
+  h.props.goals = { ...h.props.goals };
+  h.props.quickAdd = [...h.props.quickAdd];
+  h.render();
+  await h.save();
+  assert.equal(h.saves[0].goals.dailyGoal, 60);
+  assert.deepEqual(h.saves[0].quickAdd, [7, 20]);
+});
+
+test("changed background settings preserve the draft until closing and reopening", async () => {
+  const h = mount([10, 20, 30, 40]);
+  h.setField("Daily goal", "60");
+  h.setField("Weekly goal", "400");
+  h.setField("Monthly goal", "1400");
+  h.setField("Amount 1", "7");
+  h.setField("Amount 2", "14");
+  h.setField("Amount 3", "");
+  h.setField("Amount 4", "");
+  h.props.goals = { dailyGoal: 80, weeklyGoal: 560, monthlyGoal: 2000 };
+  h.props.quickAdd = [12, 24];
+  h.render();
+  await h.save();
+  assert.deepEqual(h.saves[0], { goals: { dailyGoal: 60, weeklyGoal: 400, monthlyGoal: 1400 }, quickAdd: [7, 14] });
+
+  h.props.open = false; h.render();
+  h.props.open = true; h.render();
+  await h.save();
+  assert.deepEqual(h.saves[1], { goals: { dailyGoal: 80, weeklyGoal: 560, monthlyGoal: 2000 }, quickAdd: [12, 24] });
 });

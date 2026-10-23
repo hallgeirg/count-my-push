@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { AppState } from "../types";
 
 type Props = {
@@ -22,6 +22,7 @@ export function SettingsSheet({
 }: Props) {
   const reduceMotion = useReducedMotion();
   const titleId = useId();
+  const wasOpen = useRef(false);
   const [daily, setDaily] = useState(String(goals.dailyGoal));
   const [weekly, setWeekly] = useState(String(goals.weeklyGoal));
   const [monthly, setMonthly] = useState(String(goals.monthlyGoal));
@@ -33,7 +34,11 @@ export function SettingsSheet({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) return;
+    const opening = open && !wasOpen.current;
+    wasOpen.current = open;
+    // A background state refresh must not replace the draft being edited.
+    // Reopening still starts from the latest persisted settings.
+    if (!opening) return;
     setDaily(String(goals.dailyGoal));
     setWeekly(String(goals.weeklyGoal));
     setMonthly(String(goals.monthlyGoal));
