@@ -1,12 +1,12 @@
 import { router } from "expo-router";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { Button, Card, Eyebrow, styles as ui } from "../../components/ui";
+import { StyleSheet, Text, View } from "react-native";
+import { Button, Card, Eyebrow, PageTitle, Screen, styles as ui } from "../../components/ui";
 import { EFFORT_LABEL, LADDERS, WEEK_PLAN } from "../../program/catalog";
 import { WEEKDAY_SHORT, daysOfProgramWeek, fromDayKey } from "../../program/dates";
 import { currentPrescription, describePrescription, todayPlan } from "../../program/progression";
 import type { WorkoutKind } from "../../program/types";
 import { useAppData } from "../../store/AppDataProvider";
-import { colors } from "../../theme";
+import { colors, fonts, radius } from "../../theme";
 
 const SHORT_NAME: Record<WorkoutKind, string> = { push: "Push", squat: "Knebøy", core: "Situps" };
 
@@ -18,11 +18,8 @@ export default function ProgramScreen() {
   const history = data.sessions.slice().sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 12);
 
   return (
-    <ScrollView style={s.screen} contentContainerStyle={s.content} contentInsetAdjustmentBehavior="automatic">
-      <View style={{ gap: 4 }}>
-        <Eyebrow>Uke {today.week + 1}</Eyebrow>
-        <Text style={s.heading}>Program</Text>
-      </View>
+    <Screen>
+      <PageTitle eyebrow={`Uke ${today.week + 1}`} title="Program" />
 
       <Card>
         <Eyebrow>Denne uka</Eyebrow>
@@ -39,12 +36,14 @@ export default function ProgramScreen() {
                 <Text style={[s.dayWorkout, isToday && { color: colors.onAccent }]} numberOfLines={1}>
                   {plan.workout ? SHORT_NAME[plan.workout] : "Hvile"}
                 </Text>
-                <Text style={[s.dayMark, isToday && { color: colors.onAccent }]}>{done ? "✓" : " "}</Text>
+                <Text style={[s.dayMark, isToday && { color: colors.onAccent }]} accessibilityLabel={done ? "fullført" : undefined}>
+                  {done ? "✓" : " "}
+                </Text>
               </View>
             );
           })}
         </View>
-        <Text style={[ui.body, { fontSize: 13 }]}>
+        <Text style={[ui.body, { fontSize: 14, lineHeight: 20 }]}>
           Daglige pushups alle dager unntatt push-dagen. Situps på dagene uten push eller knebøy.
         </Text>
       </Card>
@@ -75,7 +74,7 @@ export default function ProgramScreen() {
                     <Text
                       style={[
                         s.levelName,
-                        passed && { color: colors.faint },
+                        passed && { color: colors.muted },
                         current && { color: colors.onAccent },
                       ]}
                     >
@@ -127,33 +126,30 @@ export default function ProgramScreen() {
           })}
         </Card>
       ) : null}
-    </ScrollView>
+    </Screen>
   );
 }
 
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 16, gap: 14, paddingBottom: 40 },
-  heading: { color: colors.text, fontSize: 30, fontWeight: "800", letterSpacing: -1 },
   week: { flexDirection: "row", gap: 4 },
-  day: { flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 12, gap: 2 },
+  day: { flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: radius.control, gap: 2 },
   dayToday: { backgroundColor: colors.accent },
-  dayName: { color: colors.muted, fontSize: 12, fontWeight: "700" },
-  dayWorkout: { color: colors.text, fontSize: 10, fontWeight: "700" },
-  dayMark: { color: colors.accent, fontSize: 14, fontWeight: "800" },
+  dayName: { color: colors.muted, fontFamily: fonts.mono, fontSize: 12 },
+  dayWorkout: { color: colors.text, fontFamily: fonts.bold, fontSize: 11 },
+  dayMark: { color: colors.good, fontFamily: fonts.bold, fontSize: 14 },
   level: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
+    minHeight: 40,
     paddingHorizontal: 10,
-    borderRadius: 12,
+    borderRadius: radius.control,
   },
   levelCurrent: { backgroundColor: colors.accent },
-  levelName: { color: colors.text, fontSize: 15, fontWeight: "600", flexShrink: 1 },
-  levelReps: { color: colors.onAccent, fontWeight: "800", fontSize: 13 },
-  history: { flexDirection: "row", gap: 12, paddingVertical: 6 },
-  historyDate: { color: colors.muted, width: 56, fontVariant: ["tabular-nums"] },
-  historyName: { color: colors.text, fontWeight: "700" },
-  historyMeta: { color: colors.muted, fontSize: 13 },
+  levelName: { color: colors.text, fontFamily: fonts.regular, fontSize: 16, flexShrink: 1 },
+  levelReps: { color: colors.onAccent, fontFamily: fonts.bold, fontSize: 15, fontVariant: ["tabular-nums"] },
+  history: { flexDirection: "row", gap: 12, paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.line },
+  historyDate: { color: colors.muted, fontFamily: fonts.mono, fontSize: 13, width: 64, paddingTop: 2 },
+  historyName: { color: colors.text, fontFamily: fonts.bold, fontSize: 16 },
+  historyMeta: { color: colors.muted, fontFamily: fonts.regular, fontSize: 14 },
 });

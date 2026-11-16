@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Count My Push",
+    "name": "Make More Health",
     "slug": "count-my-push",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "no.hallgeirg.countmypush",
@@ -15,7 +15,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#080908",
+        "backgroundColor": "#0051FF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -29,9 +29,18 @@
     "plugins": [
       "expo-router",
       "expo-sqlite",
-      "expo-font"
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Mona-Sans-Regular.ttf",
+            "./assets/fonts/Mona-Sans-Bold.ttf",
+            "./assets/fonts/JetBrainsMono-SemiBold.ttf"
+          ]
+        }
+      ]
     ],
     "scheme": "countmypush",
-    "backgroundColor": "#080908"
+    "backgroundColor": "#F7F9FC"
   }
 }

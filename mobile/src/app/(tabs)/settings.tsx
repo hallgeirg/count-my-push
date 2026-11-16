@@ -1,11 +1,11 @@
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Button, Card, Eyebrow, Stepper, styles as ui } from "../../components/ui";
+import { Alert, StyleSheet, Text, View } from "react-native";
+import { Button, Card, Eyebrow, PageTitle, Screen, Stepper, styles as ui } from "../../components/ui";
 import { LADDERS, MAX_DAILY_TARGET, MIN_DAILY_TARGET } from "../../program/catalog";
 import { fromDayKey, mondayOf } from "../../program/dates";
 import { currentPrescription, dailyTotals, todayPlan } from "../../program/progression";
 import type { WorkoutKind } from "../../program/types";
 import { useAppData } from "../../store/AppDataProvider";
-import { colors } from "../../theme";
+import { colors, fonts } from "../../theme";
 
 export default function SettingsScreen() {
   const { data, error, setQuickAdd, setDailyTarget, setLevel, restartProgram } = useAppData();
@@ -36,12 +36,14 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView style={s.screen} contentContainerStyle={s.content} contentInsetAdjustmentBehavior="automatic">
-      <Text style={s.heading}>Innstillinger</Text>
+    <Screen>
+      <PageTitle title="Innstillinger" />
 
       {error ? (
-        <Card style={{ borderColor: "rgba(255,92,92,0.4)" }}>
-          <Text style={{ color: colors.danger, fontWeight: "700" }}>{error}</Text>
+        <Card style={{ backgroundColor: colors.dangerSoft, borderColor: colors.dangerSoft }}>
+          <Text style={{ color: colors.danger, fontFamily: fonts.bold }} accessibilityRole="alert">
+            {error}
+          </Text>
         </Card>
       ) : null}
 
@@ -64,6 +66,7 @@ export default function SettingsScreen() {
           min={MIN_DAILY_TARGET}
           max={MAX_DAILY_TARGET}
           onChange={setDailyTarget}
+          label="dagsmål"
           suffix="per dag"
         />
       </Card>
@@ -77,6 +80,7 @@ export default function SettingsScreen() {
               value={n}
               min={1}
               max={200}
+              label={`hurtigknapp ${i + 1}`}
               onChange={(v) => setQuickAdd(data.quickAdd.map((x, j) => (j === i ? v : x)))}
             />
           </View>
@@ -102,6 +106,7 @@ export default function SettingsScreen() {
                   value={p.levelIndex + 1}
                   min={1}
                   max={ladder.levels.length}
+                  label={`nivå ${ladder.title.toLowerCase()}`}
                   onChange={(n) => setLevel(kind, n - 1)}
                 />
               </View>
@@ -118,7 +123,7 @@ export default function SettingsScreen() {
         </Text>
         <Button label="Start programmet på nytt" variant="danger" onPress={confirmRestart} />
       </Card>
-    </ScrollView>
+    </Screen>
   );
 }
 
@@ -132,12 +137,9 @@ function Stat({ label, value }: { label: string; value: number }) {
 }
 
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 16, gap: 14, paddingBottom: 40 },
-  heading: { color: colors.text, fontSize: 30, fontWeight: "800", letterSpacing: -1 },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
-  rowLabel: { color: colors.text, fontWeight: "700", fontSize: 15 },
+  rowLabel: { color: colors.text, fontFamily: fonts.bold, fontSize: 16 },
   stats: { flexDirection: "row", gap: 12 },
-  statValue: { color: colors.accent, fontSize: 26, fontWeight: "800", fontVariant: ["tabular-nums"] },
-  statLabel: { color: colors.muted, fontSize: 12, fontWeight: "600" },
+  statValue: { color: colors.text, fontFamily: fonts.bold, fontSize: 32, fontVariant: ["tabular-nums"] },
+  statLabel: { color: colors.muted, fontFamily: fonts.mono, fontSize: 12 },
 });
