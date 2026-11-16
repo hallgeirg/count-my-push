@@ -5,7 +5,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "api"] },
+  { ignores: ["dist", "mobile", "var"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["src/**/*.{ts,tsx}"],
@@ -23,6 +23,15 @@ export default tseslint.config(
         "warn",
         { allowConstantExport: true },
       ],
+    },
+  },
+  {
+    // Backend: serverless handlers, the local dev server and their tests.
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    files: ["api/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: globals.node,
     },
   },
 );

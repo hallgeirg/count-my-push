@@ -36,6 +36,21 @@ The web app: React + Vite on Vercel, Postgres on [Neon](https://neon.tech). Log 
 | `PATCH` | `/api/goals` | Body: `{ "dailyGoal"?, "weeklyGoal"?, "monthlyGoal"? }` (at least one field) |
 | `PATCH` | `/api/settings` | Body: `{ "quickAdd": number[] }` (2–4 values, each 1–500) |
 
+## Make More Health API
+
+Multi-user sync, streaks, a weekly leaderboard and challenges for the iPhone app, under `/api/health/`. The contract is in [`docs/health-api.md`](docs/health-api.md).
+
+- **Database:** run [`db/002_health.sql`](db/002_health.sql) after `001_init.sql`. It only adds `health_*` tables and a view, and can be re-run.
+- **Environment:**
+
+  | Variable | Purpose |
+  |----------|---------|
+  | `WORKOS_CLIENT_ID` | WorkOS AuthKit client id; also selects the JWKS used to verify access tokens |
+  | `WORKOS_API_KEY` | WorkOS secret key for the code exchange and refresh (server only) |
+  | `HEALTH_DEV_AUTH` | `1` accepts `Bearer dev:<name>` tokens locally; ignored on Vercel |
+
+- **Local:** `HEALTH_DEV_AUTH=1 pnpm dev:health` serves `/api/**` on `http://127.0.0.1:3100` with an embedded PGlite database in `var/pglite` (no Neon needed). `pnpm test` runs the backend tests against in-memory PGlite.
+
 ## Scripts
 
 | Command | Description |
@@ -43,5 +58,7 @@ The web app: React + Vite on Vercel, Postgres on [Neon](https://neon.tech). Log 
 | `pnpm dev` | Vite dev server |
 | `pnpm dev:api` | `vercel dev` (frontend + `/api`) |
 | `pnpm build` | Typecheck + production bundle |
+| `pnpm dev:health` | Local Health API on port 3100 (PGlite) |
 | `pnpm lint` | ESLint |
+| `pnpm test` | Backend tests (Vitest) |
 | `pnpm preview` | Preview the production build |

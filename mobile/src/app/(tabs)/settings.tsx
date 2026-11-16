@@ -1,14 +1,18 @@
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
+import { useState } from "react";
+import { Alert, StyleSheet, Text, TextInput, View } from "react-native";
 import { Button, Card, Eyebrow, PageTitle, Screen, Stepper, styles as ui } from "../../components/ui";
 import { LADDERS, MAX_DAILY_TARGET, MIN_DAILY_TARGET } from "../../program/catalog";
 import { fromDayKey, mondayOf } from "../../program/dates";
 import { currentPrescription, dailyTotals, todayPlan } from "../../program/progression";
 import type { WorkoutKind } from "../../program/types";
+import { errorMessage, useSocial } from "../../social/SocialProvider";
 import { useAppData } from "../../store/AppDataProvider";
-import { colors, fonts } from "../../theme";
+import { colors, fonts, radius } from "../../theme";
 
 export default function SettingsScreen() {
   const { data, error, setQuickAdd, setDailyTarget, setLevel, restartProgram } = useAppData();
+  const signedIn = useSocial().status === "signedIn";
   if (!data) return null;
   const today = todayPlan(data);
 
@@ -115,15 +119,100 @@ export default function SettingsScreen() {
         })}
       </Card>
 
+      <AccountCard />
+
       <Card>
         <Eyebrow>Program</Eyebrow>
         <Text style={ui.body}>
           Startet {fromDayKey(data.startDay).toLocaleDateString("nb-NO", { day: "numeric", month: "long", year: "numeric" })}
-          . Alt lagres bare på denne telefonen.
+          . {signedIn ? "Loggen lagres på telefonen og synkes til kontoen din." : "Alt lagres bare på denne telefonen."}
         </Text>
         <Button label="Start programmet på nytt" variant="danger" onPress={confirmRestart} />
       </Card>
     </Screen>
+  );
+}
+
+function AccountCard() {
+  const { status, me, syncFailed, updateDisplayName, signOut } = useSocial();
+  /** null = not editing. */
+  const [name, setName] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+
+  if (status === "unconfigured" || status === "loading") return null;
+
+  if (status === "signedOut" || !me) {
+    return (
+      <Card>
+        <Eyebrow>Konto</Eyebrow>
+        <Text style={ui.body}>Ikke logget inn. Under «Sammen» kan du logge inn for streaks, toppliste og utfordringer.</Text>
+        <Button label="Gå til «Sammen»" variant="secondary" onPress={() => router.navigate("/social")} />
+      </Card>
+    );
+  }
+
+  const trimmed = name?.trim() ?? "";
+
+  async function save() {
+    if (!trimmed || trimmed.length > 40) return;
+    setSaving(true);
+    setNameError(null);
+    try {
+      await updateDisplayName(trimmed);
+      setName(null);
+    } catch (e) {
+      setNameError(errorMessage(e, "Navnet ble ikke lagret. Bruk 1–40 tegn."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function confirmSignOut() {
+    Alert.alert("Logge ut?", "Treningsloggen blir liggende på telefonen.", [
+      { text: "Avbryt", style: "cancel" },
+      { text: "Logg ut", style: "destructive", onPress: () => void signOut() },
+    ]);
+  }
+
+  return (
+    <Card>
+      <Eyebrow>Konto</Eyebrow>
+      <Text style={ui.body}>
+        Logget inn som <Text style={ui.strong}>{me.displayName}</Text>
+      </Text>
+      {syncFailed ? <Text style={s.note}>Ikke synket ennå</Text> : null}
+      {name === null ? (
+        <Button label="Endre visningsnavn" variant="secondary" onPress={() => setName(me.displayName)} />
+      ) : (
+        <View style={{ gap: 8 }}>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            maxLength={40}
+            autoFocus
+            autoCorrect={false}
+            accessibilityLabel="Visningsnavn"
+            returnKeyType="done"
+            onSubmitEditing={() => void save()}
+            style={s.input}
+          />
+          <Text style={s.note}>Vises på topplisten og i utfordringer.</Text>
+          {nameError ? (
+            <Text style={s.error} accessibilityRole="alert">
+              {nameError}
+            </Text>
+          ) : null}
+          <Button
+            label={saving ? "Lagrer …" : "Lagre navn"}
+            onPress={() => void save()}
+            disabled={saving || !trimmed || trimmed === me.displayName}
+          />
+          <Button label="Avbryt" variant="ghost" onPress={() => setName(null)} />
+        </View>
+      )}
+      <Button label="Logg ut" variant="danger" onPress={confirmSignOut} />
+    </Card>
   );
 }
 
@@ -142,4 +231,17 @@ const s = StyleSheet.create({
   stats: { flexDirection: "row", gap: 12 },
   statValue: { color: colors.text, fontFamily: fonts.bold, fontSize: 32, fontVariant: ["tabular-nums"] },
   statLabel: { color: colors.muted, fontFamily: fonts.mono, fontSize: 12 },
+  note: { color: colors.muted, fontFamily: fonts.regular, fontSize: 14 },
+  error: { color: colors.danger, fontFamily: fonts.bold, fontSize: 15 },
+  input: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.control,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 12,
+    color: colors.text,
+    fontFamily: fonts.regular,
+    fontSize: 16,
+  },
 });

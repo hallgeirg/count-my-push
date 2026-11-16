@@ -38,7 +38,9 @@
             "./assets/fonts/JetBrainsMono-SemiBold.ttf"
           ]
         }
-      ]
+      ],
+      "expo-web-browser",
+      "expo-secure-store"
     ],
     "scheme": "countmypush",
     "backgroundColor": "#F7F9FC"

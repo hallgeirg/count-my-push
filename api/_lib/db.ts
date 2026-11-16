@@ -1,8 +1,19 @@
-import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
+import { neon } from "@neondatabase/serverless";
 
-// neon() without options returns plain row arrays; ReturnType<typeof neon> would widen
-// that to every result mode and make rows[0] fail strict typechecking.
-let sql: NeonQueryFunction<false, false> | null = null;
+export type SqlRow = Record<string, unknown>;
+/** A tagged template returning plain row arrays: neon() in production, PGlite in tests and dev. */
+export type SqlTag = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => Promise<SqlRow[]>;
+
+let sql: SqlTag | null = null;
+let override: SqlTag | null = null;
+
+/** Tests and the local dev server swap in another database (PGlite); pass null to reset. */
+export function setSqlOverride(tag: SqlTag | null) {
+  override = tag;
+}
 
 /** Neon/Vercel strings may include channel_binding; the serverless driver is happier without it. */
 function normalizeConnectionString(connectionString: string): string {
@@ -12,7 +23,8 @@ function normalizeConnectionString(connectionString: string): string {
   return s;
 }
 
-export function getSql() {
+export function getSql(): SqlTag {
+  if (override) return override;
   if (sql) return sql;
   const raw =
     process.env.DATABASE_URL?.trim() || process.env.POSTGRES_URL?.trim();
