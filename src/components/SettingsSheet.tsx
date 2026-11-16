@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { AppState } from "../types";
 
 type Props = {
@@ -22,24 +22,29 @@ export function SettingsSheet({
 }: Props) {
   const reduceMotion = useReducedMotion();
   const titleId = useId();
+  const wasOpen = useRef(false);
   const [daily, setDaily] = useState(String(goals.dailyGoal));
   const [weekly, setWeekly] = useState(String(goals.weeklyGoal));
   const [monthly, setMonthly] = useState(String(goals.monthlyGoal));
   const [a, setA] = useState(String(quickAdd[0] ?? 10));
   const [b, setB] = useState(String(quickAdd[1] ?? 20));
-  const [c, setC] = useState(String(quickAdd[2] ?? 30));
+  const [c, setC] = useState(String(quickAdd[2] ?? ""));
   const [d, setD] = useState(quickAdd[3] != null ? String(quickAdd[3]) : "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) return;
+    const opening = open && !wasOpen.current;
+    wasOpen.current = open;
+    // A background state refresh must not replace the draft being edited.
+    // Reopening still starts from the latest persisted settings.
+    if (!opening) return;
     setDaily(String(goals.dailyGoal));
     setWeekly(String(goals.weeklyGoal));
     setMonthly(String(goals.monthlyGoal));
     setA(String(quickAdd[0] ?? 10));
     setB(String(quickAdd[1] ?? 20));
-    setC(String(quickAdd[2] ?? 30));
+    setC(String(quickAdd[2] ?? ""));
     setD(quickAdd[3] != null ? String(quickAdd[3]) : "");
     setError(null);
   }, [open, goals, quickAdd]);
@@ -193,7 +198,7 @@ export function SettingsSheet({
             <div style={{ display: "grid", gap: 10 }}>
               <Field label="Amount 1" value={a} onChange={setA} inputMode="numeric" />
               <Field label="Amount 2" value={b} onChange={setB} inputMode="numeric" />
-              <Field label="Amount 3" value={c} onChange={setC} inputMode="numeric" />
+              <Field label="Amount 3 (optional)" value={c} onChange={setC} inputMode="numeric" />
               <Field
                 label="Amount 4 (optional)"
                 value={d}

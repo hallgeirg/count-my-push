@@ -50,6 +50,8 @@ export default function App() {
   const lastCalendarDayRef = useRef<string | null>(null);
   /** Daily total including taps not yet rendered, so rapid taps see each other. */
   const dailyRef = useRef<number | null>(null);
+  const pendingAddsRef = useRef(0);
+  const stateRequestRef = useRef(0);
 
   const dashItem = useMemo(
     () => ({
@@ -67,10 +69,19 @@ export default function App() {
   );
 
   const refresh = useCallback(async () => {
-    const s = await fetchState(timeZone);
-    setState(s);
-    lastCalendarDayRef.current = calendarDayKeyInTimeZone(timeZone);
-    setBackgroundError(null);
+    // A server snapshot cannot include sets whose POSTs have not settled yet.
+    if (pendingAddsRef.current > 0) return;
+    const request = ++stateRequestRef.current;
+    try {
+      const s = await fetchState(timeZone);
+      if (request !== stateRequestRef.current || pendingAddsRef.current > 0) return;
+      setState(s);
+      lastCalendarDayRef.current = calendarDayKeyInTimeZone(timeZone);
+      setBackgroundError(null);
+    } catch (error) {
+      // Ignore failures from a reading invalidated by newer user activity.
+      if (request === stateRequestRef.current && pendingAddsRef.current === 0) throw error;
+    }
   }, [timeZone]);
 
   const refreshInBackground = useCallback(() => {
@@ -88,9 +99,7 @@ export default function App() {
     setError(null);
     setBackgroundError(null);
     try {
-      const s = await fetchState(timeZone);
-      setState(s);
-      lastCalendarDayRef.current = calendarDayKeyInTimeZone(timeZone);
+      await refresh();
     } catch (e) {
       setState(null);
       setError(
@@ -101,7 +110,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [timeZone]);
+  }, [refresh]);
 
   useEffect(() => {
     void loadState();
@@ -148,6 +157,8 @@ export default function App() {
 
   async function onAdd(n: number) {
     if (!state || n < 1) return;
+    pendingAddsRef.current += 1;
+    stateRequestRef.current += 1;
     setError(null);
     const optimisticId = optimisticIdRef.current--;
     const optimisticTime = new Date().toISOString();
@@ -189,15 +200,6 @@ export default function App() {
           ),
         };
       });
-      try {
-        await refresh();
-      } catch (refreshErr) {
-        setError(
-          refreshErr instanceof Error
-            ? refreshErr.message
-            : "Saved, but couldn’t refresh totals. Reopen the app or try again.",
-        );
-      }
     } catch (e) {
       // Roll back optimistic set if the backend call fails.
       setState((prev) => {
@@ -213,28 +215,29 @@ export default function App() {
         };
       });
       setError(e instanceof Error ? e.message : "Could not log set.");
+    } finally {
+      pendingAddsRef.current -= 1;
+      stateRequestRef.current += 1;
+      // Only the last settled write can request an authoritative total.
+      if (pendingAddsRef.current === 0) {
+        try {
+          await refresh();
+        } catch (refreshErr) {
+          setError(
+            refreshErr instanceof Error
+              ? refreshErr.message
+              : "Couldn’t refresh totals. Reopen the app or try again.",
+          );
+        }
+      }
     }
   }
 
   async function onDelete(id: number) {
-    if (id < 0) {
-      setState((prev) => {
-        if (!prev) return prev;
-        const target = prev.recentEntries.find((e) => e.id === id);
-        if (!target) return prev;
-        return {
-          ...prev,
-          totals: {
-            daily: Math.max(0, prev.totals.daily - target.count),
-            weekly: Math.max(0, prev.totals.weekly - target.count),
-            monthly: Math.max(0, prev.totals.monthly - target.count),
-          },
-          recentEntries: prev.recentEntries.filter((e) => e.id !== id),
-        };
-      });
-      return;
-    }
+    // Pending POSTs have no durable ID to delete. Undo becomes available after saving.
+    if (id < 0) return;
 
+    stateRequestRef.current += 1;
     setDeletingId(id);
     setError(null);
     try {
@@ -251,6 +254,7 @@ export default function App() {
     goals: Partial<AppState["goals"]>;
     quickAdd: number[];
   }) {
+    stateRequestRef.current += 1;
     await patchGoals(payload.goals);
     await patchSettings(payload.quickAdd);
     await refresh();

@@ -75,7 +75,7 @@ export function RecentEntries({ entries, busyId, onDelete }: Props) {
               <button
                 type="button"
                 onClick={() => onDelete(e.id)}
-                disabled={busyId === e.id}
+                disabled={e.id < 0 || busyId === e.id}
                 style={{
                   minWidth: 44,
                   minHeight: 44,
@@ -84,11 +84,11 @@ export function RecentEntries({ entries, busyId, onDelete }: Props) {
                   background: "transparent",
                   color: "var(--muted)",
                   padding: "10px 14px",
-                  cursor: busyId === e.id ? "wait" : "pointer",
+                  cursor: e.id < 0 || busyId === e.id ? "wait" : "pointer",
                 }}
-                aria-label={`Delete log of ${e.count} pushups`}
+                aria-label={e.id < 0 ? `Saving log of ${e.count} pushups` : `Delete log of ${e.count} pushups`}
               >
-                Undo
+                {e.id < 0 ? "Saving…" : "Undo"}
               </button>
             </motion.div>
           ))}
