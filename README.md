@@ -1,6 +1,8 @@
 # Count My Push
 
-Minimal single-user pushup tracker: React + Vite on Vercel, Postgres on [Neon](https://neon.tech). Log sets with one tap, track daily / weekly / monthly goals, and tune quick-add amounts in settings.
+Minimal single-user pushup tracker. An iPhone app with a built-in training programme lives in [`mobile/`](mobile/README.md).
+
+The web app: React + Vite on Vercel, Postgres on [Neon](https://neon.tech). Log sets with one tap, track daily / weekly / monthly goals, and tune quick-add amounts in settings.
 
 ## Prerequisites
 
