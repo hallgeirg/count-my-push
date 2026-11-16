@@ -27,7 +27,7 @@ export function SettingsSheet({
   const [monthly, setMonthly] = useState(String(goals.monthlyGoal));
   const [a, setA] = useState(String(quickAdd[0] ?? 10));
   const [b, setB] = useState(String(quickAdd[1] ?? 20));
-  const [c, setC] = useState(String(quickAdd[2] ?? 30));
+  const [c, setC] = useState(String(quickAdd[2] ?? ""));
   const [d, setD] = useState(quickAdd[3] != null ? String(quickAdd[3]) : "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +39,7 @@ export function SettingsSheet({
     setMonthly(String(goals.monthlyGoal));
     setA(String(quickAdd[0] ?? 10));
     setB(String(quickAdd[1] ?? 20));
-    setC(String(quickAdd[2] ?? 30));
+    setC(String(quickAdd[2] ?? ""));
     setD(quickAdd[3] != null ? String(quickAdd[3]) : "");
     setError(null);
   }, [open, goals, quickAdd]);
@@ -193,7 +193,7 @@ export function SettingsSheet({
             <div style={{ display: "grid", gap: 10 }}>
               <Field label="Amount 1" value={a} onChange={setA} inputMode="numeric" />
               <Field label="Amount 2" value={b} onChange={setB} inputMode="numeric" />
-              <Field label="Amount 3" value={c} onChange={setC} inputMode="numeric" />
+              <Field label="Amount 3 (optional)" value={c} onChange={setC} inputMode="numeric" />
               <Field
                 label="Amount 4 (optional)"
                 value={d}
