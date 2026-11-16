@@ -1,6 +1,6 @@
-# Count My Push – iPhone-app
+# Make More Health – iPhone-app
 
-Expo (React Native) versjon av Count My Push med et innebygd treningsprogram. Alt lagres lokalt på telefonen (SQLite key-value), så appen virker uten nett og uten Vercel/Neon-backenden.
+Make More Health er Expo (React Native)-versjonen av Count My Push, med et innebygd treningsprogram. Alt lagres lokalt på telefonen (SQLite key-value), så appen virker uten nett og uten Vercel/Neon-backenden.
 
 ## Programmet
 
@@ -44,3 +44,7 @@ Bundle-ID er satt til `no.hallgeirg.countmypush` i `app.json` – endre den om d
 | `npm run typecheck` | TypeScript |
 | `npx expo export --platform ios` | Full iOS-bundle |
 | `npx expo-doctor` | Sjekker avhengigheter og konfigurasjon |
+
+## Design
+
+Appen følger Make Mores designsystem (kundeportalens `DESIGN.md` og Make More Brand Guide): lyse arbeidsflater, Action Blue `#0051FF` for handling, én kobolt brandflate på I dag, Mona Sans og JetBrains Mono (begge SIL OFL 1.1, lisensene ligger i `assets/fonts/`). Tokenene ligger i `src/theme.ts`.

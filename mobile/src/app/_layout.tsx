@@ -1,14 +1,14 @@
-import { DarkTheme, Stack, ThemeProvider } from "expo-router";
+import { DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { AppDataProvider } from "../store/AppDataProvider";
-import { colors } from "../theme";
+import { colors, fonts } from "../theme";
 
 const theme = {
-  ...DarkTheme,
+  ...DefaultTheme,
   colors: {
-    ...DarkTheme.colors,
+    ...DefaultTheme.colors,
     background: colors.bg,
-    card: colors.bgRaised,
+    card: colors.surface,
     primary: colors.accent,
     text: colors.text,
     border: colors.line,
@@ -19,12 +19,17 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={theme}>
       <AppDataProvider>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <Stack screenOptions={{ contentStyle: { backgroundColor: colors.bg } }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen
             name="session/[kind]"
-            options={{ presentation: "modal", title: "Økt", headerTintColor: colors.accent }}
+            options={{
+              presentation: "modal",
+              title: "Økt",
+              headerTintColor: colors.accent,
+              headerTitleStyle: { fontFamily: fonts.bold, color: colors.text },
+            }}
           />
         </Stack>
       </AppDataProvider>
