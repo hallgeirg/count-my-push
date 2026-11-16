@@ -24,7 +24,6 @@ export const colors = {
   heroLead: "#E8EFFF",
   heroMuted: "#B9CAFF",
   heroLine: "rgba(255,255,255,0.22)",
-  heroGlow: "#6193FF",
 } as const;
 
 export const radius = { control: 6, container: 8 } as const;
