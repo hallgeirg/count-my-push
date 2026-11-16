@@ -12,6 +12,10 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Icon sf="calendar" md="calendar_month" />
         <NativeTabs.Trigger.Label>Program</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="social">
+        <NativeTabs.Trigger.Icon sf="person.2" md="group" />
+        <NativeTabs.Trigger.Label>Sammen</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <NativeTabs.Trigger.Icon sf="gearshape" md="settings" />
         <NativeTabs.Trigger.Label>Innstillinger</NativeTabs.Trigger.Label>

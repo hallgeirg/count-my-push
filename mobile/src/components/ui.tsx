@@ -1,11 +1,12 @@
 import * as Haptics from "expo-haptics";
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import {
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  type RefreshControlProps,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
@@ -16,13 +17,22 @@ import type { Effort } from "../program/types";
 import { colors, fonts, radius } from "../theme";
 
 /** Tab screen: scrolls under a canvas-coloured status-bar strip so content never runs into the clock. */
-export function Screen({ children }: { children: ReactNode }) {
+export function Screen({
+  children,
+  refreshControl,
+}: {
+  children: ReactNode;
+  refreshControl?: ReactElement<RefreshControlProps>;
+}) {
   const insets = useSafeAreaInsets();
   return (
     <View style={styles.screen}>
       <ScrollView
         style={styles.screen}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
+        refreshControl={refreshControl}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 96 }]}
       >
         {children}
       </ScrollView>

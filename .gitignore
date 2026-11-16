@@ -27,3 +27,6 @@ dist-ssr
 
 # TS
 *.tsbuildinfo
+
+# Local PGlite data (pnpm dev:health)
+var/
