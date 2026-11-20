@@ -10,40 +10,37 @@ import {
   type ReactNode,
 } from "react";
 import { LADDERS } from "../program/catalog";
-import { dayKey, programWeek } from "../program/dates";
-import type { AppData, DayKey, Effort, SessionLog, WorkoutKind } from "../program/types";
+import { dayKey, fromDayKey, programWeek } from "../program/dates";
+import type { AppData, DayKey, Effort, Goal, SessionLog, WorkoutKind } from "../program/types";
+import { emptyData, migrate, newId } from "./migrate";
 
+/** Kept from the first release; `migrate` upgrades what is stored under it. */
 const STORAGE_KEY = "count-my-push:v1";
 
-export function emptyData(today: DayKey = dayKey(new Date())): AppData {
-  return {
-    version: 1,
-    startDay: today,
-    quickAdd: [5, 10, 20],
-    pushEntries: [],
-    dailyEffort: {},
-    sessions: [],
-    levelOverrides: {},
-    dailyTargetOverride: null,
-  };
-}
-
-export function newId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
+export { emptyData, newId };
 
 type Actions = {
-  addPush: (count: number) => string;
-  removePush: (id: string) => void;
-  setDailyEffort: (day: DayKey, effort: Effort | null) => void;
+  /** Logs an amount for a goal, today unless a past `day` is given. */
+  addEntry: (goalId: string, count: number, day?: DayKey) => string;
+  removeEntry: (id: string) => void;
+  setDailyEffort: (goalId: string, day: DayKey, effort: Effort | null) => void;
   saveSession: (log: Omit<SessionLog, "id">) => void;
-  setQuickAdd: (amounts: number[]) => void;
-  setDailyTarget: (target: number) => void;
+  deleteSession: (id: string) => void;
+  saveGoal: (goal: Goal) => void;
+  removeGoal: (id: string) => void;
+  setSchedule: (schedule: (WorkoutKind | null)[]) => void;
   setLevel: (kind: WorkoutKind, levelIndex: number) => void;
+  completeSetup: (setup: Pick<AppData, "goals" | "schedule" | "levelOverrides">) => void;
+  /** Keeps goals and the log, clears levels and sessions, and opens setup again. */
   restartProgram: () => void;
 };
 
 type ContextValue = { data: AppData | null; error: string | null } & Actions;
+
+/** The current programme week, never negative. */
+export function currentWeek(data: Pick<AppData, "startDay">): number {
+  return Math.max(0, programWeek(data.startDay, dayKey(new Date())));
+}
 
 const AppDataContext = createContext<ContextValue | null>(null);
 
@@ -57,7 +54,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     Storage.getItemAsync(STORAGE_KEY)
       .then((raw) => {
         if (cancelled) return;
-        const parsed = raw ? ({ ...emptyData(), ...JSON.parse(raw) } as AppData) : emptyData();
+        const parsed = migrate(raw ? JSON.parse(raw) : null);
         loaded.current = true;
         setData(parsed);
       })
@@ -85,34 +82,42 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const actions = useMemo<Actions>(
     () => ({
-      addPush(count) {
+      addEntry(goalId, count, day) {
         const id = newId();
-        const at = new Date().toISOString();
-        update((d) => ({ ...d, pushEntries: [...d.pushEntries, { id, count, at }] }));
+        const at = day && day !== dayKey(new Date()) ? fromDayKey(day).toISOString() : new Date().toISOString();
+        update((d) => ({ ...d, entries: [...d.entries, { id, goalId, count, at }] }));
         return id;
       },
-      removePush(id) {
-        update((d) => ({ ...d, pushEntries: d.pushEntries.filter((e) => e.id !== id) }));
+      removeEntry(id) {
+        update((d) => ({ ...d, entries: d.entries.filter((e) => e.id !== id) }));
       },
-      setDailyEffort(day, effort) {
+      setDailyEffort(goalId, day, effort) {
         update((d) => {
-          const dailyEffort = { ...d.dailyEffort };
-          if (effort) dailyEffort[day] = effort;
-          else delete dailyEffort[day];
-          return { ...d, dailyEffort };
+          const forGoal = { ...d.dailyEffort[goalId] };
+          if (effort) forGoal[day] = effort;
+          else delete forGoal[day];
+          return { ...d, dailyEffort: { ...d.dailyEffort, [goalId]: forGoal } };
         });
       },
       saveSession(log) {
         update((d) => ({ ...d, sessions: [...d.sessions, { ...log, id: newId() }] }));
       },
-      setQuickAdd(amounts) {
-        update((d) => ({ ...d, quickAdd: amounts }));
+      deleteSession(id) {
+        update((d) => ({ ...d, sessions: d.sessions.filter((s) => s.id !== id) }));
       },
-      setDailyTarget(target) {
-        update((d) => {
-          const week = Math.max(0, programWeek(d.startDay, dayKey(new Date())));
-          return { ...d, dailyTargetOverride: { week, target } };
-        });
+      saveGoal(goal) {
+        update((d) => ({
+          ...d,
+          goals: d.goals.some((g) => g.id === goal.id)
+            ? d.goals.map((g) => (g.id === goal.id ? goal : g))
+            : [...d.goals, goal],
+        }));
+      },
+      removeGoal(id) {
+        update((d) => ({ ...d, goals: d.goals.filter((g) => g.id !== id) }));
+      },
+      setSchedule(schedule) {
+        update((d) => ({ ...d, schedule }));
       },
       setLevel(kind, levelIndex) {
         const level = LADDERS[kind].levels[levelIndex];
@@ -125,8 +130,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           },
         }));
       },
+      completeSetup(setup) {
+        update((d) => ({ ...d, ...setup, onboarded: true }));
+      },
       restartProgram() {
-        update((d) => ({ ...emptyData(), quickAdd: d.quickAdd, pushEntries: d.pushEntries }));
+        update((d) => ({
+          ...emptyData(),
+          goals: d.goals.map((g) => ({ ...g, targetWeek: 0 })),
+          entries: d.entries,
+          schedule: d.schedule,
+        }));
       },
     }),
     [update],

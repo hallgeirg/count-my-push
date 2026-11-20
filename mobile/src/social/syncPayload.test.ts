@@ -21,7 +21,7 @@ function session(partial: Partial<SessionLog> = {}): SessionLog {
 
 describe("buildSyncPayload", () => {
   it("sends a 120-day window ending today", () => {
-    const p = buildSyncPayload({ pushEntries: [], sessions: [] }, NOW);
+    const p = buildSyncPayload({ entries: [], sessions: [] }, NOW);
     expect(p.today).toBe("2026-11-16");
     expect(p.since).toBe("2026-07-20");
   });
@@ -29,10 +29,10 @@ describe("buildSyncPayload", () => {
   it("adds the local day to entries and drops those before the window", () => {
     const p = buildSyncPayload(
       {
-        pushEntries: [
-          { id: "old", count: 10, at: at(2026, 7, 19) },
-          { id: "first", count: 10, at: at(2026, 7, 20, 0) },
-          { id: "late", count: 20, at: at(2026, 11, 15, 23) },
+        entries: [
+          { id: "old", goalId: "pushups", count: 10, at: at(2026, 7, 19) },
+          { id: "first", goalId: "pushups", count: 10, at: at(2026, 7, 20, 0) },
+          { id: "late", goalId: "pushups", count: 20, at: at(2026, 11, 15, 23) },
         ],
         sessions: [],
       },
@@ -44,13 +44,14 @@ describe("buildSyncPayload", () => {
     ]);
   });
 
-  it("leaves out entries the API would reject", () => {
+  it("leaves out entries the API would reject and goals other than pushups", () => {
     const p = buildSyncPayload(
       {
-        pushEntries: [
-          { id: "zero", count: 0, at: at(2026, 11, 16) },
-          { id: "huge", count: 501, at: at(2026, 11, 16) },
-          { id: "ok", count: 500, at: at(2026, 11, 16) },
+        entries: [
+          { id: "zero", goalId: "pushups", count: 0, at: at(2026, 11, 16) },
+          { id: "huge", goalId: "pushups", count: 501, at: at(2026, 11, 16) },
+          { id: "ok", goalId: "pushups", count: 500, at: at(2026, 11, 16) },
+          { id: "plank", goalId: "plank", count: 60, at: at(2026, 11, 16) },
         ],
         sessions: [],
       },
@@ -61,7 +62,7 @@ describe("buildSyncPayload", () => {
 
   it("flattens sessions to the API shape", () => {
     const p = buildSyncPayload(
-      { pushEntries: [], sessions: [session(), session({ id: "old", day: "2026-07-01" })] },
+      { entries: [], sessions: [session(), session({ id: "old", day: "2026-07-01" })] },
       NOW,
     );
     expect(p.sessions).toEqual([
@@ -78,14 +79,14 @@ describe("buildSyncPayload", () => {
   });
 
   it("never replaces server history from before this phone started tracking", () => {
-    const empty = buildSyncPayload({ pushEntries: [], sessions: [] }, NOW, "2026-11-10");
+    const empty = buildSyncPayload({ entries: [], sessions: [] }, NOW, "2026-11-10");
     expect(empty.since).toBe("2026-11-10");
     expect(empty.entries).toEqual([]);
   });
 
   it("still includes older local records when the install marker is newer", () => {
     const p = buildSyncPayload(
-      { pushEntries: [{ id: "a", count: 5, at: new Date(2026, 10, 1, 9).toISOString() }], sessions: [] },
+      { entries: [{ id: "a", goalId: "pushups", count: 5, at: new Date(2026, 10, 1, 9).toISOString() }], sessions: [] },
       NOW,
       "2026-11-10",
     );

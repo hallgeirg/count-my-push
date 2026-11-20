@@ -1,17 +1,16 @@
 import { router } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { describeDays } from "../../components/pickers";
 import { Button, Card, Eyebrow, PageTitle, Screen, styles as ui } from "../../components/ui";
-import { EFFORT_LABEL, LADDERS, WEEK_PLAN } from "../../program/catalog";
+import { EFFORT_LABEL, LADDERS, SHORT_NAME, UNIT_RULES } from "../../program/catalog";
 import { WEEKDAY_SHORT, daysOfProgramWeek, fromDayKey } from "../../program/dates";
-import { currentPrescription, describePrescription, todayPlan } from "../../program/progression";
+import { currentPrescription, describePrescription, formatAmount, todayPlan } from "../../program/progression";
 import type { WorkoutKind } from "../../program/types";
 import { useAppData } from "../../store/AppDataProvider";
 import { colors, fonts, radius } from "../../theme";
 
-const SHORT_NAME: Record<WorkoutKind, string> = { push: "Push", squat: "Knebøy", core: "Situps" };
-
 export default function ProgramScreen() {
-  const { data } = useAppData();
+  const { data, deleteSession } = useAppData();
   if (!data) return null;
   const today = todayPlan(data);
   const days = daysOfProgramWeek(data.startDay, today.week);
@@ -25,16 +24,16 @@ export default function ProgramScreen() {
         <Eyebrow>Denne uka</Eyebrow>
         <View style={s.week}>
           {days.map((day, i) => {
-            const plan = WEEK_PLAN[i]!;
-            const done = plan.workout
-              ? data.sessions.some((x) => x.day === day && x.prescription.kind === plan.workout)
+            const workout = data.schedule[i] ?? null;
+            const done = workout
+              ? data.sessions.some((x) => x.day === day && x.prescription.kind === workout)
               : false;
             const isToday = day === today.day;
             return (
               <View key={day} style={[s.day, isToday && s.dayToday]}>
                 <Text style={[s.dayName, isToday && { color: colors.onAccent }]}>{WEEKDAY_SHORT[i]}</Text>
                 <Text style={[s.dayWorkout, isToday && { color: colors.onAccent }]} numberOfLines={1}>
-                  {plan.workout ? SHORT_NAME[plan.workout] : "Hvile"}
+                  {workout ? SHORT_NAME[workout] : "Fri"}
                 </Text>
                 <Text style={[s.dayMark, isToday && { color: colors.onAccent }]} accessibilityLabel={done ? "fullført" : undefined}>
                   {done ? "✓" : " "}
@@ -43,19 +42,36 @@ export default function ProgramScreen() {
             );
           })}
         </View>
-        <Text style={[ui.body, { fontSize: 14, lineHeight: 20 }]}>
-          Daglige pushups alle dager unntatt push-dagen. Situps på dagene uten push eller knebøy.
-        </Text>
+        <Button label="Endre ukeplan" variant="secondary" onPress={() => router.push("/schedule")} />
       </Card>
 
       <Card>
-        <Eyebrow>Daglige pushups</Eyebrow>
-        <Text style={ui.title}>{today.dailyTarget} per dag denne uka</Text>
-        <Text style={ui.body}>
-          Startet på 10. Hver mandag ser appen på forrige uke: nådde du målet minst 5 av 6 dager går det
-          opp 2 (opp 4 om det mest var lett). Var en dag helt tom, holdes målet. Bommet du mer enn halvparten,
-          går det ned 2.
+        <Eyebrow>Daglige mål denne uka</Eyebrow>
+        {today.goals.length === 0 ? <Text style={ui.body}>Ingen daglige mål.</Text> : null}
+        {today.goals.map(({ goal, target }) => (
+          <Pressable
+            key={goal.id}
+            accessibilityRole="button"
+            accessibilityLabel={`${goal.name}, ${target} ${UNIT_RULES[goal.unit].label}, ${describeDays(goal.days)}. Endre`}
+            onPress={() => router.push(`/goal/${goal.id}`)}
+            style={({ pressed }) => [s.goalRow, pressed && { backgroundColor: colors.surfaceSubtle }]}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={s.historyName}>{goal.name}</Text>
+              <Text style={s.historyMeta}>
+                {describeDays(goal.days)}
+                {goal.adaptive ? " · justeres hver uke" : ""}
+              </Text>
+            </View>
+            <Text style={s.goalTarget}>{formatAmount(target, goal.unit)}</Text>
+          </Pressable>
+        ))}
+        <Text style={[ui.body, { fontSize: 14, lineHeight: 20 }]}>
+          Mål som justeres automatisk, vurderes hver mandag. Når du nådde målet minst 80 % av dagene, går det
+          opp ett hakk, eller to hakk om det mest var lett. Var en dag helt tom, holdes målet. Bommet du på
+          mer enn halvparten, går det ned ett hakk.
         </Text>
+        <Button label="Legg til mål" variant="secondary" onPress={() => router.push("/goal/new")} />
       </Card>
 
       {(Object.keys(LADDERS) as WorkoutKind[]).map((kind) => {
@@ -121,6 +137,20 @@ export default function ProgramScreen() {
                     {h.sets.join(" · ")} · {EFFORT_LABEL[h.effort].title}
                   </Text>
                 </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Slett økta ${level.name}`}
+                  hitSlop={8}
+                  onPress={() =>
+                    Alert.alert("Slette økta?", "Neste økt beregnes på nytt ut fra økta før denne.", [
+                      { text: "Avbryt", style: "cancel" },
+                      { text: "Slett", style: "destructive", onPress: () => deleteSession(h.id) },
+                    ])
+                  }
+                  style={({ pressed }) => [s.delete, pressed && { backgroundColor: colors.surfaceSubtle }]}
+                >
+                  <Text style={s.deleteText}>Slett</Text>
+                </Pressable>
               </View>
             );
           })}
@@ -151,5 +181,24 @@ const s = StyleSheet.create({
   history: { flexDirection: "row", gap: 12, paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.line },
   historyDate: { color: colors.muted, fontFamily: fonts.mono, fontSize: 13, width: 64, paddingTop: 2 },
   historyName: { color: colors.text, fontFamily: fonts.bold, fontSize: 16 },
+  goalRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    minHeight: 52,
+    paddingHorizontal: 8,
+    borderRadius: radius.control,
+  },
+  goalTarget: { color: colors.text, fontFamily: fonts.bold, fontSize: 20, fontVariant: ["tabular-nums"] },
+  delete: {
+    alignSelf: "center",
+    minHeight: 36,
+    paddingHorizontal: 12,
+    justifyContent: "center",
+    borderRadius: radius.control,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  deleteText: { color: colors.danger, fontFamily: fonts.bold, fontSize: 14 },
   historyMeta: { color: colors.muted, fontFamily: fonts.regular, fontSize: 14 },
 });

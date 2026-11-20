@@ -89,25 +89,30 @@ export const STARTING_LEVEL: Record<WorkoutKind, number> = {
 };
 
 export const INITIAL_DAILY_TARGET = 10;
-export const MIN_DAILY_TARGET = 5;
-export const MAX_DAILY_TARGET = 150;
 
-export type DayPlan = {
-  workout: WorkoutKind | null;
-  /** Whether the easy daily pushups apply. Skipped on the heavy push day. */
-  dailyPushups: boolean;
-};
+/** Bounds and weekly step for a goal's target, by unit. */
+export const UNIT_RULES = {
+  reps: { min: 1, max: 500, adaptiveMin: 5, step: 2, label: "reps", short: "" },
+  seconds: { min: 5, max: 1800, adaptiveMin: 10, step: 5, label: "sekunder", short: " s" },
+} as const;
 
-/** Monday-first weekly schedule. */
-export const WEEK_PLAN: readonly DayPlan[] = [
-  { workout: "push", dailyPushups: false },
-  { workout: "core", dailyPushups: true },
-  { workout: "squat", dailyPushups: true },
-  { workout: "core", dailyPushups: true },
-  { workout: "squat", dailyPushups: true },
-  { workout: "core", dailyPushups: true },
-  { workout: null, dailyPushups: true },
+/** Monday-first default plan: heavy push Monday, squats Wednesday and Friday, situps in between. */
+export const DEFAULT_SCHEDULE: readonly (WorkoutKind | null)[] = ["push", "core", "squat", "core", "squat", "core", null];
+
+export const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6] as const;
+
+export type GoalPreset = { id: string; name: string; unit: "reps" | "seconds"; target: number; quickAdd: number[] };
+
+/** Ready-made daily goals offered in setup and when adding a goal. */
+export const GOAL_PRESETS: readonly GoalPreset[] = [
+  { id: "pushups", name: "Pushups", unit: "reps", target: INITIAL_DAILY_TARGET, quickAdd: [5, 10, 20] },
+  { id: "situps", name: "Situps", unit: "reps", target: 20, quickAdd: [10, 20, 30] },
+  { id: "squats", name: "Knebøy", unit: "reps", target: 20, quickAdd: [10, 15, 25] },
+  { id: "plank", name: "Planke", unit: "seconds", target: 60, quickAdd: [30, 45, 60] },
+  { id: "pullups", name: "Pullups", unit: "reps", target: 5, quickAdd: [1, 3, 5] },
 ];
+
+export const SHORT_NAME: Record<WorkoutKind, string> = { push: "Push", squat: "Knebøy", core: "Situps" };
 
 export const EFFORT_LABEL = {
   easy: { title: "Lett", detail: "4+ reps igjen" },

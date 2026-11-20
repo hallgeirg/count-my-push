@@ -1,7 +1,7 @@
 /** Local calendar day, formatted `YYYY-MM-DD`. */
 export type DayKey = string;
 
-/** The three structured workouts in the programme. Daily pushups are logged separately. */
+/** The three structured workouts in the programme. Daily goals are logged separately. */
 export type WorkoutKind = "push" | "squat" | "core";
 
 /**
@@ -12,8 +12,29 @@ export type WorkoutKind = "push" | "squat" | "core";
  */
 export type Effort = "easy" | "good" | "empty";
 
-export type PushEntry = {
+export type GoalUnit = "reps" | "seconds";
+
+/** A daily goal the user sets up: "50 pushups every weekday", "60 s plank on Saturdays". */
+export type Goal = {
   id: string;
+  name: string;
+  unit: GoalUnit;
+  /** Target per scheduled day, from programme week `targetWeek` onwards. */
+  target: number;
+  targetWeek: number;
+  /** Weekdays the goal applies, Monday = 0 … Sunday = 6. */
+  days: number[];
+  quickAdd: number[];
+  /** Let the app adjust the target every week from hit rate and how it felt. */
+  adaptive: boolean;
+};
+
+/** The built-in pushup goal; its log is what «Sammen» syncs. */
+export const PUSHUP_GOAL_ID = "pushups";
+
+export type LogEntry = {
+  id: string;
+  goalId: string;
   count: number;
   /** ISO timestamp. */
   at: string;
@@ -46,15 +67,17 @@ export type LevelOverride = {
 };
 
 export type AppData = {
-  version: 1;
+  version: 2;
+  /** The first-run setup has been completed (or skipped). */
+  onboarded: boolean;
   /** First day of the programme. Weeks are counted from the Monday of this day's week. */
   startDay: DayKey;
-  quickAdd: number[];
-  pushEntries: PushEntry[];
-  /** Optional "how did today's pushups feel" rating per day. */
-  dailyEffort: Record<DayKey, Effort>;
+  goals: Goal[];
+  entries: LogEntry[];
+  /** Optional "how did it feel" rating per goal and day. */
+  dailyEffort: Record<string, Record<DayKey, Effort>>;
+  /** Monday-first weekly workout plan; `null` is a day without a workout. */
+  schedule: (WorkoutKind | null)[];
   sessions: SessionLog[];
   levelOverrides: Partial<Record<WorkoutKind, LevelOverride>>;
-  /** Manual daily pushup target that applies from `week` onwards, before later automatic adjustments. */
-  dailyTargetOverride: { week: number; target: number } | null;
 };

@@ -42,6 +42,34 @@ export default function RootLayout() {
                 headerTitleStyle: { fontFamily: fonts.bold, color: colors.text },
               }}
             />
+            <Stack.Screen
+              name="goal/[id]"
+              options={{
+                presentation: "modal",
+                title: "Mål",
+                headerTintColor: colors.accent,
+                headerTitleStyle: { fontFamily: fonts.bold, color: colors.text },
+              }}
+            />
+            <Stack.Screen
+              name="schedule"
+              options={{
+                presentation: "modal",
+                title: "Ukeplan",
+                headerTintColor: colors.accent,
+                headerTitleStyle: { fontFamily: fonts.bold, color: colors.text },
+              }}
+            />
+            <Stack.Screen
+              name="yesterday"
+              options={{
+                presentation: "modal",
+                title: "Logg for i går",
+                headerTintColor: colors.accent,
+                headerTitleStyle: { fontFamily: fonts.bold, color: colors.text },
+              }}
+            />
+            <Stack.Screen name="setup" options={{ headerShown: false, gestureEnabled: false }} />
             <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
           </Stack>
         </SocialProvider>
