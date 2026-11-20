@@ -1,4 +1,5 @@
 import { addDays, diffDays } from "./days.js";
+import type { Exercise } from "./exercises.js";
 
 export type ChallengeType = "most_in_period" | "first_to_target";
 /** What is stored; `active`/`completed` are derived from it on read. */
@@ -8,6 +9,7 @@ export type ChallengeStatus = "pending" | "declined" | "active" | "completed";
 export type ChallengeRecord = {
   id: string;
   type: ChallengeType;
+  exercise: Exercise;
   state: StoredState;
   creatorId: string;
   opponentId: string;
@@ -17,7 +19,7 @@ export type ChallengeRecord = {
   endsOn: string | null;
 };
 
-/** One logged entry or push session; `amount` is its pushups. */
+/** One logged entry or session in the challenge's exercise; `amount` is its reps or seconds. */
 export type ChallengeEvent = { userId: string; day: string; atMs: number; amount: number };
 
 export type ChallengeOutcome = {

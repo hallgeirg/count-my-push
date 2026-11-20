@@ -1,5 +1,6 @@
 import { getSql, type SqlRow } from "../db.js";
 import type { ChallengeEvent, ChallengeRecord, ChallengeType } from "./challenges.js";
+import type { Exercise } from "./exercises.js";
 import type { DayTotal } from "./stats.js";
 import { generateFriendCode } from "./users.js";
 
@@ -85,17 +86,17 @@ export async function updateDisplayName(userId: string, displayName: string): Pr
 
 // --- Activity
 
-/** One row per active day with that day's pushups (0 for squat/core-only days). */
+/** One row per active day with that day's pushups (0 on days with only other exercises). */
 export async function dayTotals(userId: string): Promise<DayTotal[]> {
   const rows = await getSql()`
-    SELECT day::text AS day, SUM(pushups)::int AS pushups
-    FROM health_activity WHERE user_id = ${userId}::uuid
+    SELECT day::text AS day, SUM(CASE WHEN exercise = 'pushups' THEN amount ELSE 0 END)::int AS pushups
+    FROM health_amounts WHERE user_id = ${userId}::uuid
     GROUP BY day ORDER BY day
   `;
   return rows.map((r) => ({ day: day(r.day), pushups: num(r.pushups) }));
 }
 
-export type SyncEntry = { id: string; count: number; at: string; day: string };
+export type SyncEntry = { id: string; exercise: Exercise; count: number; at: string; day: string };
 export type SyncSession = {
   id: string;
   day: string;
@@ -137,15 +138,15 @@ export async function replaceSnapshot(
   await getSql()`
     WITH in_entries AS (
       SELECT * FROM jsonb_to_recordset(${entriesJson}::jsonb)
-        AS x(id text, count int, at timestamptz, day date)
+        AS x(id text, exercise text, count int, at timestamptz, day date)
     ), in_sessions AS (
       SELECT * FROM jsonb_to_recordset(${sessionsJson}::jsonb)
         AS x(id text, day date, at timestamptz, kind text, level_index int, sets jsonb, reps int, effort text)
     ), up_entries AS (
-      INSERT INTO health_entries (user_id, client_id, count, at, day)
-      SELECT ${userId}::uuid, id, count, at, day FROM in_entries
+      INSERT INTO health_entries (user_id, client_id, exercise, count, at, day)
+      SELECT ${userId}::uuid, id, exercise, count, at, day FROM in_entries
       ON CONFLICT (user_id, client_id) DO UPDATE
-        SET count = EXCLUDED.count, at = EXCLUDED.at, day = EXCLUDED.day, updated_at = NOW()
+        SET exercise = EXCLUDED.exercise, count = EXCLUDED.count, at = EXCLUDED.at, day = EXCLUDED.day, updated_at = NOW()
       RETURNING 1
     ), up_sessions AS (
       INSERT INTO health_sessions (user_id, client_id, day, at, kind, level_index, sets, reps, effort)
@@ -169,16 +170,18 @@ export async function replaceSnapshot(
 
 // --- Leaderboard
 
+/** Every user's total of one exercise between two days (users without any get 0). */
 export async function weeklyTotals(
   from: string,
   to: string,
+  exercise: Exercise = "pushups",
 ): Promise<{ userId: string; displayName: string; total: number }[]> {
   const rows = await getSql()`
     SELECT u.id::text AS "userId", u.display_name AS "displayName", COALESCE(t.total, 0)::int AS total
     FROM health_users u
     LEFT JOIN (
-      SELECT user_id, SUM(pushups) AS total FROM health_activity
-      WHERE day BETWEEN ${from}::date AND ${to}::date
+      SELECT user_id, SUM(amount) AS total FROM health_amounts
+      WHERE day BETWEEN ${from}::date AND ${to}::date AND exercise = ${exercise}
       GROUP BY user_id
     ) t ON t.user_id = u.id
   `;
@@ -213,6 +216,7 @@ function toChallenge(r: SqlRow): ChallengeRow {
   return {
     id: str(r.id),
     type: str(r.type) as ChallengeType,
+    exercise: str(r.exercise) as Exercise,
     state: str(r.state) as ChallengeRecord["state"],
     creatorId: str(r.creatorId),
     opponentId: str(r.opponentId),
@@ -227,14 +231,15 @@ function toChallenge(r: SqlRow): ChallengeRow {
 
 export async function createChallenge(input: {
   type: ChallengeType;
+  exercise: Exercise;
   creatorId: string;
   opponentId: string;
   days: number;
   target: number | null;
 }): Promise<string> {
   const rows = await getSql()`
-    INSERT INTO health_challenges (type, creator_id, opponent_id, days, target)
-    VALUES (${input.type}, ${input.creatorId}::uuid, ${input.opponentId}::uuid, ${input.days}, ${input.target})
+    INSERT INTO health_challenges (type, exercise, creator_id, opponent_id, days, target)
+    VALUES (${input.type}, ${input.exercise}, ${input.creatorId}::uuid, ${input.opponentId}::uuid, ${input.days}, ${input.target})
     RETURNING id::text AS id
   `;
   return str(rows[0].id);
@@ -243,7 +248,7 @@ export async function createChallenge(input: {
 /** The caller's challenges, newest first; or one challenge by id when `onlyId` is given. */
 export async function listChallenges(userId: string, onlyId: string | null = null): Promise<ChallengeRow[]> {
   const rows = await getSql()`
-    SELECT c.id::text AS id, c.type, c.state, c.creator_id::text AS "creatorId",
+    SELECT c.id::text AS id, c.type, c.exercise, c.state, c.creator_id::text AS "creatorId",
       c.opponent_id::text AS "opponentId", c.days, c.target,
       c.starts_on::text AS "startsOn", c.ends_on::text AS "endsOn",
       cu.display_name AS "creatorName", ou.display_name AS "opponentName"
@@ -258,14 +263,14 @@ export async function listChallenges(userId: string, onlyId: string | null = nul
   return rows.map(toChallenge);
 }
 
-/** Pushup events of both sides inside each accepted challenge's window, keyed by challenge id. */
+/** Events in the challenge's exercise for both sides inside each accepted challenge's window, keyed by challenge id. */
 export async function challengeEvents(
   userId: string,
   onlyId: string | null = null,
 ): Promise<Map<string, ChallengeEvent[]>> {
   const rows = await getSql()`
     SELECT c.id::text AS "challengeId", a.user_id::text AS "userId", a.day::text AS day,
-      (EXTRACT(EPOCH FROM a.at) * 1000)::float8 AS "atMs", a.pushups
+      (EXTRACT(EPOCH FROM a.at) * 1000)::float8 AS "atMs", a.amount
     FROM (
       SELECT * FROM health_challenges
       WHERE (creator_id = ${userId}::uuid OR opponent_id = ${userId}::uuid)
@@ -274,16 +279,17 @@ export async function challengeEvents(
       ORDER BY created_at DESC
       LIMIT 200
     ) c
-    JOIN health_activity a
+    JOIN health_amounts a
       ON a.user_id IN (c.creator_id, c.opponent_id)
       AND a.day BETWEEN c.starts_on AND c.ends_on
-      AND a.pushups > 0
+      AND a.exercise = c.exercise
+      AND a.amount > 0
   `;
   const map = new Map<string, ChallengeEvent[]>();
   for (const r of rows) {
     const id = str(r.challengeId);
     const list = map.get(id) ?? [];
-    list.push({ userId: str(r.userId), day: day(r.day), atMs: num(r.atMs), amount: num(r.pushups) });
+    list.push({ userId: str(r.userId), day: day(r.day), atMs: num(r.atMs), amount: num(r.amount) });
     map.set(id, list);
   }
   return map;

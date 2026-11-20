@@ -54,6 +54,10 @@ describe("challengeTitle", () => {
 
   it("shows the target for first-to challenges", () => {
     expect(challengeTitle(challenge({ type: "first_to_target", target: 500 }))).toBe("Først til 500 pushups");
+    expect(challengeTitle(challenge({ type: "first_to_target", target: 600, exercise: "plank" }))).toBe(
+      "Først til 600 sekunder planke",
+    );
+    expect(challengeTitle(challenge({ exercise: "squats" }))).toBe("Flest knebøy på 7 dager");
   });
 });
 

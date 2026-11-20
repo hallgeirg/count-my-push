@@ -1,7 +1,6 @@
-import { LADDERS, STARTING_LEVEL, UNIT_RULES } from "./catalog";
+import { LADDERS, SESSION_GOAL, STARTING_LEVEL, UNIT_RULES } from "./catalog";
 import { dayKey, daysOfProgramWeek, programWeek, weekdayIndex } from "./dates";
 import {
-  PUSHUP_GOAL_ID,
   type AppData,
   type DayKey,
   type Effort,
@@ -71,20 +70,20 @@ export function currentPrescription(data: AppData, kind: WorkoutKind): Prescript
   return startingPrescription(kind);
 }
 
-/** Reps a session counts as, with per-side sets counted on both sides. */
+/** Reps a session counts as: the sum of its sets (per-side sets once), as on the server. */
 export function sessionReps(s: SessionLog): number {
-  const perSide = LADDERS[s.prescription.kind].levels[s.prescription.levelIndex]?.perSide;
-  return s.sets.reduce((a, b) => a + b, 0) * (perSide ? 2 : 1);
+  return s.sets.reduce((a, b) => a + b, 0);
 }
 
-/** A goal's total per day. Reps from push sessions count towards the pushup goal. */
+/**
+ * A goal's total per day. Session reps count towards the matching goal:
+ * push → pushups, squat → squats, core → situps.
+ */
 export function goalTotals(data: Pick<AppData, "entries" | "sessions">, goalId: string): Map<DayKey, number> {
   const totals = new Map<DayKey, number>();
   const add = (day: DayKey, n: number) => totals.set(day, (totals.get(day) ?? 0) + n);
   for (const e of data.entries) if (e.goalId === goalId) add(dayKey(new Date(e.at)), e.count);
-  if (goalId === PUSHUP_GOAL_ID) {
-    for (const s of data.sessions) if (s.prescription.kind === "push") add(s.day, sessionReps(s));
-  }
+  for (const s of data.sessions) if (SESSION_GOAL[s.prescription.kind] === goalId) add(s.day, sessionReps(s));
   return totals;
 }
 

@@ -103,7 +103,8 @@ export function createHealthApi(deps: ApiDeps) {
     me: (today: DayKey) => authed<{ user: Me; stats: Stats }>("GET", `/me${q(today)}`),
     updateMe: (displayName: string) => authed<{ user: Me }>("PATCH", "/me", { displayName }),
     sync: (payload: SyncPayload) => authed<{ stats: Stats }>("POST", "/sync", payload),
-    leaderboard: (today: DayKey) => authed<Leaderboard>("GET", `/leaderboard${q(today)}`),
+    leaderboard: (today: DayKey, exercise = "pushups") =>
+      authed<Leaderboard>("GET", `/leaderboard${q(today)}&exercise=${encodeURIComponent(exercise)}`),
     challenges: (today: DayKey) => authed<{ challenges: Challenge[] }>("GET", `/challenges${q(today)}`),
     createChallenge: (input: NewChallenge) => authed<{ challenge: Challenge }>("POST", "/challenges", input),
     respond: (id: string, accept: boolean, today: DayKey) =>

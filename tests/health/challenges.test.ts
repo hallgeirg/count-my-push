@@ -25,7 +25,7 @@ async function profile(token: string) {
   return (await call(me, { token, query: { today: day0 } })).body.user as { id: string; friendCode: string };
 }
 
-function logSets(token: string, entries: { id: string; day: string; count: number; at: string }[]) {
+function logSets(token: string, entries: { id: string; day: string; count: number; at: string; exercise?: string }[]) {
   return call(sync, { method: "POST", token, body: { today: day0, since: "2026-11-01", entries, sessions: [] } });
 }
 
@@ -151,5 +151,47 @@ describe("challenge flow between two dev users", () => {
     expect(
       (await call(respond, { method: "POST", token: BOB, body: { id: "00000000-0000-4000-8000-000000000000", accept: true, today: day0 } })).status,
     ).toBe(404);
+  });
+});
+
+describe("challenges in other exercises", () => {
+  const CAROL = "dev:carol";
+  const DAVE = "dev:dave";
+  let dave: { id: string; friendCode: string };
+
+  beforeAll(async () => {
+    vi.stubEnv("HEALTH_DEV_AUTH", "1");
+    await profile(CAROL);
+    dave = await profile(DAVE);
+    vi.unstubAllEnvs();
+  });
+
+  it("counts only the challenge's exercise", async () => {
+    const created = await call(challenges, {
+      method: "POST",
+      token: CAROL,
+      body: { friendCode: dave.friendCode, type: "most_in_period", days: 3, exercise: "plank" },
+    });
+    expect(created.body.challenge).toMatchObject({ exercise: "plank", status: "pending" });
+    const id = created.body.challenge.id;
+    await call(respond, { method: "POST", token: DAVE, body: { id, accept: true, today: "2026-12-01" } });
+    await logSets(CAROL, [
+      { id: "pl1", day: "2026-12-01", count: 120, at: "2026-12-01T08:00:00Z", exercise: "plank" },
+      { id: "pu1", day: "2026-12-01", count: 50, at: "2026-12-01T09:00:00Z" },
+    ]);
+    const view = (await list(CAROL, "2026-12-02")).find((x) => x.id === id);
+    expect(view).toMatchObject({ exercise: "plank", me: { total: 120 }, opponent: { total: 0 } });
+  });
+
+  it("defaults new challenges to pushups", async () => {
+    const created = await call(challenges, {
+      method: "POST",
+      token: CAROL,
+      body: { friendCode: dave.friendCode, type: "most_in_period", days: 1 },
+    });
+    expect(created.body.challenge.exercise).toBe("pushups");
+    expect(
+      (await call(challenges, { method: "POST", token: CAROL, body: { friendCode: dave.friendCode, type: "most_in_period", days: 1, exercise: "burpees" } })).status,
+    ).toBe(400);
   });
 });

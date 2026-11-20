@@ -112,6 +112,19 @@ export const GOAL_PRESETS: readonly GoalPreset[] = [
   { id: "pullups", name: "Pullups", unit: "reps", target: 5, quickAdd: [1, 3, 5] },
 ];
 
+/** Exercises «Sammen» can compare between users: the presets. Custom goals stay on the phone. */
+export const SHARED_EXERCISES: readonly string[] = GOAL_PRESETS.map((p) => p.id);
+
+/** What a challenge or leaderboard counts, as a noun: "pushups", "sekunder planke". */
+export function exerciseNoun(id: string): string {
+  const preset = GOAL_PRESETS.find((p) => p.id === id);
+  if (!preset) return id;
+  return preset.unit === "seconds" ? `sekunder ${preset.name.toLowerCase()}` : preset.name.toLowerCase();
+}
+
+/** Programme sessions count towards the matching daily goal, as on the server. */
+export const SESSION_GOAL: Record<WorkoutKind, string> = { push: "pushups", squat: "squats", core: "situps" };
+
 export const SHORT_NAME: Record<WorkoutKind, string> = { push: "Push", squat: "Knebøy", core: "Situps" };
 
 export const EFFORT_LABEL = {

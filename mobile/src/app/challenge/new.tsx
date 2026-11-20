@@ -2,9 +2,10 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useState, type ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { Button, Card, Eyebrow, Stepper, styles as ui } from "../../components/ui";
+import { Button, Card, Chip, Eyebrow, Stepper, styles as ui } from "../../components/ui";
+import { GOAL_PRESETS, exerciseNoun } from "../../program/catalog";
 import { ApiError } from "../../social/api";
-import { dayWord } from "../../social/challenges";
+import { challengeTitle } from "../../social/challenges";
 import { errorMessage, useSocial } from "../../social/SocialProvider";
 import type { ChallengeType, NewChallenge } from "../../social/types";
 import { colors, fonts, radius } from "../../theme";
@@ -13,6 +14,8 @@ export default function NewChallengeScreen() {
   const { me, createChallenge, status } = useSocial();
   const [code, setCode] = useState("");
   const [type, setType] = useState<ChallengeType>("most_in_period");
+  const [exercise, setExercise] = useState("pushups");
+  const seconds = GOAL_PRESETS.find((p) => p.id === exercise)?.unit === "seconds";
   const [periodDays, setPeriodDays] = useState(7);
   const [target, setTarget] = useState(500);
   const [targetDays, setTargetDays] = useState(30);
@@ -29,8 +32,8 @@ export default function NewChallengeScreen() {
     }
     const input: NewChallenge =
       type === "most_in_period"
-        ? { friendCode, type, days: periodDays }
-        : { friendCode, type, target, days: targetDays };
+        ? { friendCode, exercise, type, days: periodDays }
+        : { friendCode, exercise, type, target, days: targetDays };
     setError(null);
     setSending(true);
     try {
@@ -84,17 +87,34 @@ export default function NewChallengeScreen() {
       </Card>
 
       <Card>
+        <Eyebrow>Øvelse</Eyebrow>
+        <View style={s.chips} accessibilityRole="radiogroup">
+          {GOAL_PRESETS.map((p) => (
+            <Chip
+              key={p.id}
+              label={p.name}
+              selected={exercise === p.id}
+              onPress={() => {
+                setExercise(p.id);
+                setTarget(p.unit === "seconds" ? 1800 : 500);
+              }}
+            />
+          ))}
+        </View>
+      </Card>
+
+      <Card>
         <Eyebrow>Type</Eyebrow>
         <View style={{ gap: 8 }} accessibilityRole="radiogroup">
           <Option
             selected={type === "most_in_period"}
-            title={`Flest pushups på ${periodDays} ${dayWord(periodDays)}`}
+            title={challengeTitle({ type: "most_in_period", exercise, target: null, days: periodDays, startsOn: null, endsOn: null })}
             detail="Den som tar flest i perioden, vinner."
             onPress={() => setType("most_in_period")}
           />
           <Option
             selected={type === "first_to_target"}
-            title={`Først til ${target} pushups`}
+            title={challengeTitle({ type: "first_to_target", exercise, target, days: targetDays, startsOn: null, endsOn: null })}
             detail="Den som når målet først, vinner."
             onPress={() => setType("first_to_target")}
           />
@@ -106,7 +126,14 @@ export default function NewChallengeScreen() {
         ) : (
           <>
             <Row label="Mål">
-              <Stepper value={target} min={50} max={10000} step={50} onChange={setTarget} label="pushups i målet" />
+              <Stepper
+                value={target}
+                min={seconds ? 60 : 50}
+                max={10000}
+                step={seconds ? 60 : 50}
+                onChange={setTarget}
+                label={`${exerciseNoun(exercise)} i målet`}
+              />
             </Row>
             <Row label="Frist i dager">
               <Stepper value={targetDays} min={1} max={60} onChange={setTargetDays} label="dager frist" />
@@ -198,6 +225,7 @@ const s = StyleSheet.create({
   optionTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 16 },
   optionDetail: { color: colors.muted, fontFamily: fonts.regular, fontSize: 14 },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   rowLabel: { color: colors.text, fontFamily: fonts.bold, fontSize: 16 },
   error: { color: colors.danger, fontFamily: fonts.bold, fontSize: 15 },
 });
