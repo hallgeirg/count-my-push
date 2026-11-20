@@ -6,6 +6,7 @@ type Side = { userId: string; displayName: string; total: number };
 export type ChallengeView = {
   id: string;
   type: ChallengeRow["type"];
+  exercise: ChallengeRow["exercise"];
   status: ChallengeStatus;
   startsOn: string | null;
   endsOn: string | null;
@@ -36,6 +37,7 @@ export async function loadChallengeViews(
     return {
       id: c.id,
       type: c.type,
+      exercise: c.exercise,
       status: outcome.status,
       startsOn: c.startsOn,
       endsOn: c.endsOn,

@@ -28,7 +28,7 @@ describe("migrations", () => {
   it("can be re-run without errors or data loss", async () => {
     await call(me, { token: "dev:migrator", query: { today } });
     const { readFile } = await import("node:fs/promises");
-    for (const file of ["001_init.sql", "002_health.sql"]) {
+    for (const file of ["001_init.sql", "002_health.sql", "003_health_exercises.sql"]) {
       await testDb.db.exec(await readFile(new URL(`../../db/${file}`, import.meta.url), "utf8"));
     }
     const users = await testDb.db.query("SELECT 1 FROM health_users WHERE workos_user_id = 'dev:migrator'");
@@ -153,6 +153,49 @@ describe("sync", () => {
       const res = await call(sync, { method: "POST", token, body });
       expect(res.status).toBe(400);
     }
+  });
+});
+
+describe("exercises", () => {
+  const token = "dev:exerciser";
+  const post = (entries: object[], sessions: object[] = []) =>
+    call(sync, { method: "POST", token, body: { today, since: "2026-11-01", entries, sessions } });
+
+  it("stores the exercise, defaults old apps to pushups and allows long planks", async () => {
+    const res = await post([
+      entry("old", today, 10),
+      { ...entry("plank", today, 900), exercise: "plank" },
+      { ...entry("sit", today, 20), exercise: "situps" },
+    ]);
+    expect(res.status).toBe(200);
+    const rows = await testDb.db.query(
+      "SELECT client_id, exercise, count FROM health_entries e JOIN health_users u ON u.id = e.user_id WHERE u.workos_user_id = $1 ORDER BY client_id",
+      [token],
+    );
+    expect(rows.rows).toEqual([
+      { client_id: "old", exercise: "pushups", count: 10 },
+      { client_id: "plank", exercise: "plank", count: 900 },
+      { client_id: "sit", exercise: "situps", count: 20 },
+    ]);
+    // Stats stay pushups only.
+    expect(res.body.stats).toMatchObject({ weekTotal: 10 });
+  });
+
+  it("rejects unknown exercises and entries over an hour", async () => {
+    expect((await post([{ ...entry("x", today, 10), exercise: "burpees" }])).status).toBe(400);
+    expect((await post([{ ...entry("x", today, 3601), exercise: "plank" }])).status).toBe(400);
+  });
+
+  it("ranks one exercise at a time, with squat sessions counted as squats", async () => {
+    await post(
+      [{ ...entry("sq", today, 15), exercise: "squats" }],
+      [{ id: "s1", day: today, at: `${today}T07:00:00Z`, kind: "squat", levelIndex: 0, sets: [10, 10, 10], effort: "good" }],
+    );
+    const res = await call(leaderboard, { token, query: { today, exercise: "squats" } });
+    expect(res.status).toBe(200);
+    expect(res.body.exercise).toBe("squats");
+    expect(res.body.rows.find((r: { isMe: boolean }) => r.isMe).total).toBe(45);
+    expect((await call(leaderboard, { token, query: { today, exercise: "burpees" } })).status).toBe(400);
   });
 });
 

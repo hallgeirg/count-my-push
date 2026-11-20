@@ -176,10 +176,15 @@ describe("daily goal target", () => {
 });
 
 describe("goalTotals", () => {
-  it("counts push-session reps as pushups, both sides for per-side variants", () => {
+  it("counts session reps towards the matching goal, per-side sets once as on the server", () => {
     const archer = { ...pushSession(MONDAY), id: "a", prescription: { kind: "push" as const, levelIndex: 5, sets: 3, reps: 5 } };
-    const d = data({ entries: [entryOn(MONDAY, 10), entryOn(MONDAY, 60, "plank")], sessions: [pushSession(MONDAY), archer] });
-    expect(goalTotals(d, "pushups").get(MONDAY)).toBe(10 + 15 + 30);
+    const squat = { ...pushSession(MONDAY), id: "q", prescription: startingPrescription("squat"), sets: [10, 10, 10] };
+    const d = data({
+      entries: [entryOn(MONDAY, 10), entryOn(MONDAY, 60, "plank")],
+      sessions: [pushSession(MONDAY), archer, squat],
+    });
+    expect(goalTotals(d, "pushups").get(MONDAY)).toBe(10 + 15 + 15);
+    expect(goalTotals(d, "squats").get(MONDAY)).toBe(30);
     expect(goalTotals(d, "plank").get(MONDAY)).toBe(60);
   });
 });

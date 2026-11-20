@@ -128,6 +128,7 @@ describe("challenges", () => {
   const base: ChallengeRecord = {
     id: "c1",
     type: "most_in_period",
+    exercise: "pushups",
     state: "accepted",
     creatorId: "alice",
     opponentId: "bob",

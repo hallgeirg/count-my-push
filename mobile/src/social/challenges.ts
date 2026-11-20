@@ -1,3 +1,4 @@
+import { exerciseNoun } from "../program/catalog";
 import { daysBetween } from "../program/dates";
 import type { Challenge } from "./types";
 
@@ -24,15 +25,16 @@ export function groupChallenges(list: Challenge[]): ChallengeGroups {
 export const dayWord = (n: number) => (n === 1 ? "dag" : "dager");
 
 /** Length in days: from `days` when sent, else from the dates once started. */
-export function challengeDays(c: Challenge): number | null {
+export function challengeDays(c: Pick<Challenge, "days" | "startsOn" | "endsOn">): number | null {
   if (c.days) return c.days;
   return c.startsOn && c.endsOn ? daysBetween(c.startsOn, c.endsOn) + 1 : null;
 }
 
-export function challengeTitle(c: Challenge): string {
-  if (c.type === "first_to_target") return `Først til ${c.target ?? "?"} pushups`;
+export function challengeTitle(c: Pick<Challenge, "type" | "exercise" | "target" | "days" | "startsOn" | "endsOn">): string {
+  const noun = exerciseNoun(c.exercise ?? "pushups");
+  if (c.type === "first_to_target") return `Først til ${c.target ?? "?"} ${noun}`;
   const days = challengeDays(c);
-  return days ? `Flest pushups på ${days} ${dayWord(days)}` : "Flest pushups";
+  return days ? `Flest ${noun} på ${days} ${dayWord(days)}` : `Flest ${noun}`;
 }
 
 export type Outcome = "Vunnet" | "Tapt" | "Uavgjort" | "Avslått";

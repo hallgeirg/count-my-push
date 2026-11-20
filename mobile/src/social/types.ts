@@ -15,7 +15,8 @@ export type AuthConfig = { clientId: string; redirectUri: string };
 
 export type Tokens = { accessToken: string; refreshToken: string | null };
 
-export type SyncEntry = { id: string; count: number; at: string; day: DayKey };
+/** `exercise` is a preset goal id: pushups, situps, squats, plank or pullups. */
+export type SyncEntry = { id: string; exercise: string; count: number; at: string; day: DayKey };
 
 export type SyncSession = {
   id: string;
@@ -43,7 +44,8 @@ export type LeaderboardRow = {
   isMe: boolean;
 };
 
-export type Leaderboard = { from: DayKey; to: DayKey; rows: LeaderboardRow[] };
+/** `exercise` is missing from servers older than exercises; that means pushups. */
+export type Leaderboard = { from: DayKey; to: DayKey; exercise?: string; rows: LeaderboardRow[] };
 
 export type ChallengeType = "most_in_period" | "first_to_target";
 export type ChallengeStatus = "pending" | "declined" | "active" | "completed";
@@ -52,6 +54,8 @@ export type Side = { userId: string; displayName: string; total: number };
 export type Challenge = {
   id: string;
   type: ChallengeType;
+  /** Missing from servers older than exercises; that means pushups. */
+  exercise?: string;
   status: ChallengeStatus;
   startsOn: DayKey | null;
   endsOn: DayKey | null;
@@ -66,5 +70,5 @@ export type Challenge = {
 };
 
 export type NewChallenge =
-  | { friendCode: string; type: "most_in_period"; days: number }
-  | { friendCode: string; type: "first_to_target"; target: number; days: number };
+  | { friendCode: string; exercise: string; type: "most_in_period"; days: number }
+  | { friendCode: string; exercise: string; type: "first_to_target"; target: number; days: number };

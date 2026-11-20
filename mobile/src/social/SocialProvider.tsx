@@ -31,6 +31,9 @@ type SocialContextValue = {
   me: Me | null;
   stats: Stats | null;
   leaderboard: Leaderboard | null;
+  /** Which exercise the leaderboard ranks. */
+  leaderboardExercise: string;
+  setLeaderboardExercise: (exercise: string) => void;
   challenges: Challenge[] | null;
   /** The last upload failed and nothing has succeeded since. */
   syncFailed: boolean;
@@ -79,6 +82,8 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
+  const [leaderboardExercise, setExerciseState] = useState("pushups");
+  const exerciseRef = useRef("pushups");
   const [challenges, setChallenges] = useState<Challenge[] | null>(null);
   const [syncFailed, setSyncFailed] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -159,7 +164,11 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     const gen = generation.current;
     const today = dayKey(new Date());
     try {
-      const [mine, board, list] = await Promise.all([api.me(today), api.leaderboard(today), api.challenges(today)]);
+      const [mine, board, list] = await Promise.all([
+        api.me(today),
+        api.leaderboard(today, exerciseRef.current),
+        api.challenges(today),
+      ]);
       if (gen !== generation.current) return;
       setMe(mine.user);
       setStats(mine.stats);
@@ -293,6 +302,25 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     [api, loadSocial],
   );
 
+  const setLeaderboardExercise = useCallback(
+    (exercise: string) => {
+      exerciseRef.current = exercise;
+      setExerciseState(exercise);
+      setLeaderboard(null);
+      if (!api || !tokens.current) return;
+      const gen = generation.current;
+      api
+        .leaderboard(dayKey(new Date()), exercise)
+        .then((board) => {
+          if (gen === generation.current && exerciseRef.current === exercise) setLeaderboard(board);
+        })
+        .catch(() => {
+          if (gen === generation.current) setLoadFailed(true);
+        });
+    },
+    [api],
+  );
+
   const createChallenge = useCallback(
     async (input: NewChallenge) => {
       if (!api) return;
@@ -318,6 +346,8 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       me,
       stats,
       leaderboard,
+      leaderboardExercise,
+      setLeaderboardExercise,
       challenges,
       syncFailed,
       loadFailed,
@@ -337,6 +367,8 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       me,
       stats,
       leaderboard,
+      leaderboardExercise,
+      setLeaderboardExercise,
       challenges,
       syncFailed,
       loadFailed,

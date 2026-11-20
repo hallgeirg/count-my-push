@@ -2,20 +2,24 @@ import { z } from "zod";
 import { sendJson } from "../../_lib/json.js";
 import { requireUser } from "../../_lib/health/auth.js";
 import { listChallengeViews, loadChallengeViews } from "../../_lib/health/challenge-views.js";
+import { EXERCISES } from "../../_lib/health/exercises.js";
 import { HttpError, parseBody, route, todayQuery } from "../../_lib/health/http.js";
 import { createChallenge, findUserByFriendCode } from "../../_lib/health/store.js";
 import { normalizeFriendCode } from "../../_lib/health/users.js";
 
 const friendCode = z.string().min(1).max(20);
+const exercise = z.enum(EXERCISES).default("pushups");
 
 const createSchema = z.discriminatedUnion("type", [
   z.object({
     friendCode,
+    exercise,
     type: z.literal("most_in_period"),
     days: z.number().int().min(1).max(31),
   }),
   z.object({
     friendCode,
+    exercise,
     type: z.literal("first_to_target"),
     target: z.number().int().min(10).max(10_000),
     days: z.number().int().min(1).max(60).default(30),
@@ -37,6 +41,7 @@ export default route({
     if (opponent.id === user.id) throw new HttpError(400, "You cannot challenge yourself");
     const id = await createChallenge({
       type: body.type,
+      exercise: body.exercise,
       creatorId: user.id,
       opponentId: opponent.id,
       days: body.days,

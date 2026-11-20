@@ -102,7 +102,7 @@ describe("health api", () => {
   it("surfaces the API error message and status", async () => {
     const { api } = setup([json(404, { error: "Unknown friend code" })]);
     await expect(
-      api.createChallenge({ friendCode: "NOPE", type: "most_in_period", days: 7 }),
+      api.createChallenge({ friendCode: "NOPE", exercise: "pushups", type: "most_in_period", days: 7 }),
     ).rejects.toMatchObject({ status: 404, message: "Unknown friend code" });
   });
 });

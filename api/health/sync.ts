@@ -2,6 +2,7 @@ import { z } from "zod";
 import { sendJson } from "../_lib/json.js";
 import { requireUser } from "../_lib/health/auth.js";
 import { dayKey, parseBody, route } from "../_lib/health/http.js";
+import { EXERCISES, MAX_ENTRY } from "../_lib/health/exercises.js";
 import { computeStats } from "../_lib/health/stats.js";
 import { dayTotals, replaceSnapshot } from "../_lib/health/store.js";
 
@@ -15,7 +16,9 @@ const schema = z.object({
     .array(
       z.object({
         id: clientId,
-        count: z.number().int().min(1).max(500),
+        // Apps from before exercises existed send only pushups and no field.
+        exercise: z.enum(EXERCISES).default("pushups"),
+        count: z.number().int().min(1).max(MAX_ENTRY),
         at: isoTime,
         day: dayKey,
       }),

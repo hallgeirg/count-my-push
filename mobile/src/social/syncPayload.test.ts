@@ -39,25 +39,29 @@ describe("buildSyncPayload", () => {
       NOW,
     );
     expect(p.entries).toEqual([
-      { id: "first", count: 10, at: at(2026, 7, 20, 0), day: "2026-07-20" },
-      { id: "late", count: 20, at: at(2026, 11, 15, 23), day: "2026-11-15" },
+      { id: "first", exercise: "pushups", count: 10, at: at(2026, 7, 20, 0), day: "2026-07-20" },
+      { id: "late", exercise: "pushups", count: 20, at: at(2026, 11, 15, 23), day: "2026-11-15" },
     ]);
   });
 
-  it("leaves out entries the API would reject and goals other than pushups", () => {
+  it("leaves out entries the API would reject and custom goals", () => {
     const p = buildSyncPayload(
       {
         entries: [
           { id: "zero", goalId: "pushups", count: 0, at: at(2026, 11, 16) },
-          { id: "huge", goalId: "pushups", count: 501, at: at(2026, 11, 16) },
+          { id: "huge", goalId: "plank", count: 3601, at: at(2026, 11, 16) },
           { id: "ok", goalId: "pushups", count: 500, at: at(2026, 11, 16) },
-          { id: "plank", goalId: "plank", count: 60, at: at(2026, 11, 16) },
+          { id: "plank", goalId: "plank", count: 3600, at: at(2026, 11, 16) },
+          { id: "custom", goalId: "m4k2-abc123", count: 10, at: at(2026, 11, 16) },
         ],
         sessions: [],
       },
       NOW,
     );
-    expect(p.entries.map((e) => e.id)).toEqual(["ok"]);
+    expect(p.entries.map((e) => [e.id, e.exercise])).toEqual([
+      ["ok", "pushups"],
+      ["plank", "plank"],
+    ]);
   });
 
   it("flattens sessions to the API shape", () => {

@@ -10,7 +10,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Button, Card, Eyebrow, PageTitle, Screen, styles as ui } from "../../components/ui";
+import { Button, Card, Chip, Eyebrow, PageTitle, Screen, styles as ui } from "../../components/ui";
+import { GOAL_PRESETS, exerciseNoun } from "../../program/catalog";
 import {
   challengeOutcome,
   challengeProgress,
@@ -101,7 +102,19 @@ function SignedOut() {
 }
 
 function SignedIn() {
-  const { me, stats, leaderboard, challenges, syncFailed, loadFailed, refresh, loadSocial } = useSocial();
+  const {
+    me,
+    stats,
+    leaderboard,
+    leaderboardExercise,
+    setLeaderboardExercise,
+    challenges,
+    syncFailed,
+    loadFailed,
+    refresh,
+    loadSocial,
+  } = useSocial();
+  const noun = exerciseNoun(leaderboardExercise);
   const [pulling, setPulling] = useState(false);
 
   useFocusEffect(
@@ -158,15 +171,25 @@ function SignedIn() {
 
       <Card>
         <Eyebrow>Ukas toppliste</Eyebrow>
+        <View style={s.chips} accessibilityRole="radiogroup">
+          {GOAL_PRESETS.map((p) => (
+            <Chip
+              key={p.id}
+              label={p.name}
+              selected={leaderboardExercise === p.id}
+              onPress={() => setLeaderboardExercise(p.id)}
+            />
+          ))}
+        </View>
         {leaderboard ? (
-          leaderboard.rows.length ? (
+          leaderboard.rows.some((r) => r.total > 0) ? (
             <View>
               {leaderboard.rows.map((row) => (
-                <LeaderRow key={row.userId} row={row} />
+                <LeaderRow key={row.userId} row={row} noun={noun} />
               ))}
             </View>
           ) : (
-            <Text style={ui.body}>Ingen har logget pushups denne uka ennå.</Text>
+            <Text style={ui.body}>Ingen har logget {noun} denne uka ennå.</Text>
           )
         ) : (
           <Text style={ui.body}>{loadFailed ? "Kunne ikke hente topplisten. Dra ned for å prøve igjen." : "Henter …"}</Text>
@@ -191,12 +214,12 @@ function HeroStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function LeaderRow({ row }: { row: LeaderboardRow }) {
+function LeaderRow({ row, noun }: { row: LeaderboardRow; noun: string }) {
   return (
     <View
       style={[s.leaderRow, row.isMe && s.leaderRowMe]}
       accessible
-      accessibilityLabel={`${row.rank}. plass, ${row.displayName}${row.isMe ? " (deg)" : ""}, ${row.total} pushups, streak ${row.currentStreak} ${dayWord(row.currentStreak)}`}
+      accessibilityLabel={`${row.rank}. plass, ${row.displayName}${row.isMe ? " (deg)" : ""}, ${row.total} ${noun}, streak ${row.currentStreak} ${dayWord(row.currentStreak)}`}
     >
       <Text style={s.rank}>{row.rank}</Text>
       <View style={{ flex: 1 }}>
@@ -445,6 +468,7 @@ const s = StyleSheet.create({
   barTrack: { height: 6, borderRadius: 3, backgroundColor: colors.line, overflow: "hidden" },
   barFill: { height: 6, borderRadius: 3 },
   standing: { color: colors.text, fontFamily: fonts.bold, fontSize: 14 },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   finishedHead: { flexDirection: "row", alignItems: "center", gap: 8 },
   badge: {
     color: colors.textSecondary,
