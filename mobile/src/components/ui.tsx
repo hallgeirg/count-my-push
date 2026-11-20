@@ -212,6 +212,42 @@ export function EffortPicker({
   );
 }
 
+/** A selectable pill: weekday toggles, schedule choices, goal presets. */
+export function Chip({
+  label,
+  selected,
+  onPress,
+  accessibilityLabel,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  accessibilityLabel?: string;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ checked: selected }}
+      hitSlop={4}
+      onPress={() => {
+        void Haptics.selectionAsync().catch(() => undefined);
+        onPress();
+      }}
+      style={({ pressed }) => [styles.chip, selected && styles.chipSelected, pressed && { opacity: 0.85 }]}
+    >
+      <Text
+        style={[styles.chipText, selected && { color: colors.onAccent }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: 16, paddingBottom: 48, gap: 16 },
@@ -291,4 +327,17 @@ export const styles = StyleSheet.create({
   effortSelected: { backgroundColor: colors.accent, borderColor: colors.accent },
   effortTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 15 },
   effortDetail: { color: colors.muted, fontFamily: fonts.regular, fontSize: 12 },
+  chip: {
+    minHeight: 40,
+    minWidth: 44,
+    paddingHorizontal: 8,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chipSelected: { backgroundColor: colors.accent, borderColor: colors.accent },
+  chipText: { color: colors.text, fontFamily: fonts.bold, fontSize: 14 },
 });

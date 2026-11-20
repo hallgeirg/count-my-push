@@ -1,7 +1,11 @@
+import { Redirect } from "expo-router";
 import { NativeTabs } from "expo-router/native-tabs";
+import { useAppData } from "../../store/AppDataProvider";
 import { colors } from "../../theme";
 
 export default function TabsLayout() {
+  const { data } = useAppData();
+  if (data && !data.onboarded) return <Redirect href="/setup" />;
   return (
     <NativeTabs tintColor={colors.accent}>
       <NativeTabs.Trigger name="index">

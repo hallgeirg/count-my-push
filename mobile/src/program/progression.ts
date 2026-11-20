@@ -1,14 +1,16 @@
-import {
-  INITIAL_DAILY_TARGET,
-  LADDERS,
-  MAX_DAILY_TARGET,
-  MIN_DAILY_TARGET,
-  STARTING_LEVEL,
-  WEEK_PLAN,
-  type DayPlan,
-} from "./catalog";
+import { LADDERS, STARTING_LEVEL, UNIT_RULES } from "./catalog";
 import { dayKey, daysOfProgramWeek, programWeek, weekdayIndex } from "./dates";
-import type { AppData, DayKey, Effort, Prescription, SessionLog, WorkoutKind } from "./types";
+import {
+  PUSHUP_GOAL_ID,
+  type AppData,
+  type DayKey,
+  type Effort,
+  type Goal,
+  type GoalUnit,
+  type Prescription,
+  type SessionLog,
+  type WorkoutKind,
+} from "./types";
 
 /**
  * Double progression: add reps while every set is completed with something left,
@@ -69,83 +71,109 @@ export function currentPrescription(data: AppData, kind: WorkoutKind): Prescript
   return startingPrescription(kind);
 }
 
-export function dailyTotals(data: AppData): Map<DayKey, number> {
+/** Reps a session counts as, with per-side sets counted on both sides. */
+export function sessionReps(s: SessionLog): number {
+  const perSide = LADDERS[s.prescription.kind].levels[s.prescription.levelIndex]?.perSide;
+  return s.sets.reduce((a, b) => a + b, 0) * (perSide ? 2 : 1);
+}
+
+/** A goal's total per day. Reps from push sessions count towards the pushup goal. */
+export function goalTotals(data: Pick<AppData, "entries" | "sessions">, goalId: string): Map<DayKey, number> {
   const totals = new Map<DayKey, number>();
-  for (const e of data.pushEntries) {
-    const key = dayKey(new Date(e.at));
-    totals.set(key, (totals.get(key) ?? 0) + e.count);
+  const add = (day: DayKey, n: number) => totals.set(day, (totals.get(day) ?? 0) + n);
+  for (const e of data.entries) if (e.goalId === goalId) add(dayKey(new Date(e.at)), e.count);
+  if (goalId === PUSHUP_GOAL_ID) {
+    for (const s of data.sessions) if (s.prescription.kind === "push") add(s.day, sessionReps(s));
   }
   return totals;
 }
 
 export type WeekReview = {
-  /** Days in the week where daily pushups were scheduled (and the programme had started). */
+  /** Days in the week where the goal was scheduled (and the programme had started). */
   scheduled: number;
   /** Of those, days where the target was reached. */
   hit: number;
   efforts: Effort[];
 };
 
-export function adjustDailyTarget(target: number, review: WeekReview): number {
+export function adjustDailyTarget(target: number, review: WeekReview, unit: GoalUnit = "reps"): number {
+  const rules = UNIT_RULES[unit];
   if (review.scheduled === 0) return target;
   const rate = review.hit / review.scheduled;
-  if (rate < 0.5) return Math.max(MIN_DAILY_TARGET, target - 2);
+  if (rate < 0.5) return Math.max(Math.min(rules.adaptiveMin, target), target - rules.step);
   if (rate < 0.8) return target;
   if (review.efforts.includes("empty")) return target;
   const easy = review.efforts.filter((e) => e === "easy").length;
-  const step = easy >= Math.ceil(review.scheduled / 2) ? 4 : 2;
-  return Math.min(MAX_DAILY_TARGET, target + step);
+  const step = easy >= Math.ceil(review.scheduled / 2) ? rules.step * 2 : rules.step;
+  return Math.min(rules.max, target + step);
 }
 
 function reviewWeek(
   data: AppData,
+  goal: Goal,
   week: number,
   target: number,
   totals: Map<DayKey, number>,
 ): WeekReview {
   const days = daysOfProgramWeek(data.startDay, week).filter(
-    (d) => d >= data.startDay && WEEK_PLAN[weekdayIndex(d)]!.dailyPushups,
+    (d) => d >= data.startDay && goal.days.includes(weekdayIndex(d)),
   );
   const efforts: Effort[] = [];
   let hit = 0;
   for (const d of days) {
     if ((totals.get(d) ?? 0) >= target) hit++;
-    const effort = data.dailyEffort[d];
+    const effort = data.dailyEffort[goal.id]?.[d];
     if (effort) efforts.push(effort);
   }
   return { scheduled: days.length, hit, efforts };
 }
 
 /**
- * Daily pushup target for a programme week: starts at ten and is re-evaluated
- * after every finished week from how often the target was hit and how it felt.
+ * A goal's target in a programme week. Fixed goals keep their target; adaptive goals are
+ * re-evaluated after every finished week since the target was set, from how often it was
+ * reached and how it felt.
  */
-export function dailyTargetForWeek(data: AppData, week: number): number {
-  let target = INITIAL_DAILY_TARGET;
-  let from = 0;
-  const override = data.dailyTargetOverride;
-  if (override && override.week <= week) {
-    target = override.target;
-    from = override.week;
-  }
-  const totals = dailyTotals(data);
-  for (let w = from; w < week; w++) {
-    target = adjustDailyTarget(target, reviewWeek(data, w, target, totals));
+export function goalTargetForWeek(data: AppData, goal: Goal, week: number): number {
+  if (!goal.adaptive) return goal.target;
+  const totals = goalTotals(data, goal.id);
+  let target = goal.target;
+  for (let w = goal.targetWeek; w < week; w++) {
+    target = adjustDailyTarget(target, reviewWeek(data, goal, w, target, totals), goal.unit);
   }
   return target;
+}
+
+export type GoalProgress = {
+  goal: Goal;
+  target: number;
+  done: number;
+  /** The goal applies on this weekday. */
+  scheduled: boolean;
+};
+
+/** Every goal's target and total on a day, scheduled goals first. */
+export function goalsOnDay(data: AppData, day: DayKey): GoalProgress[] {
+  const week = Math.max(0, programWeek(data.startDay, day));
+  const weekday = weekdayIndex(day);
+  const list = data.goals.map((goal) => ({
+    goal,
+    target: goalTargetForWeek(data, goal, week),
+    done: goalTotals(data, goal.id).get(day) ?? 0,
+    scheduled: goal.days.includes(weekday),
+  }));
+  return [...list.filter((g) => g.scheduled), ...list.filter((g) => !g.scheduled)];
 }
 
 export type TodayPlan = {
   day: DayKey;
   weekday: number;
   week: number;
-  plan: DayPlan;
-  dailyTarget: number;
-  dailyDone: number;
+  workout: WorkoutKind | null;
+  goals: GoalProgress[];
   /** Today's scheduled workout has already been logged. */
   workoutDone: boolean;
-  /** The weekly push session has not been done yet this week (and today is past push day). */
-  pushPending: boolean;
+  /** Workouts scheduled earlier this week that have not been made up for yet. */
+  catchUp: WorkoutKind[];
 };
 
 export function sessionsOnDay(data: AppData, day: DayKey): SessionLog[] {
@@ -156,26 +184,26 @@ export function todayPlan(data: AppData, now: Date = new Date()): TodayPlan {
   const day = dayKey(now);
   const weekday = weekdayIndex(day);
   const week = Math.max(0, programWeek(data.startDay, day));
-  const plan = WEEK_PLAN[weekday]!;
-  const todays = sessionsOnDay(data, day);
-  const workoutDone = plan.workout != null && todays.some((s) => s.prescription.kind === plan.workout);
-  const weekDays = new Set(daysOfProgramWeek(data.startDay, week));
-  const pushThisWeek = data.sessions.some(
-    (s) => s.prescription.kind === "push" && weekDays.has(s.day),
-  );
-  return {
-    day,
-    weekday,
-    week,
-    plan,
-    dailyTarget: dailyTargetForWeek(data, week),
-    dailyDone: dailyTotals(data).get(day) ?? 0,
-    workoutDone,
-    pushPending: plan.workout !== "push" && !pushThisWeek,
-  };
+  const workout = data.schedule[weekday] ?? null;
+  const workoutDone = workout != null && sessionsOnDay(data, day).some((s) => s.prescription.kind === workout);
+  const weekDays = daysOfProgramWeek(data.startDay, week);
+  const catchUp = (Object.keys(LADDERS) as WorkoutKind[]).filter((kind) => {
+    const planned = weekDays.filter(
+      (d) => d >= data.startDay && d <= day && data.schedule[weekdayIndex(d)] === kind,
+    ).length;
+    const done = data.sessions.filter((s) => s.prescription.kind === kind && weekDays.includes(s.day)).length;
+    const todaysCard = workout === kind && !workoutDone ? 1 : 0;
+    return planned - done - todaysCard > 0;
+  });
+  return { day, weekday, week, workout, goals: goalsOnDay(data, day), workoutDone, catchUp };
 }
 
 export function describePrescription(p: Prescription): string {
   const level = LADDERS[p.kind].levels[p.levelIndex]!;
   return `${p.sets} × ${p.reps}${level.perSide ? " per side" : ""}`;
+}
+
+/** "60 s" or "20" – a goal amount with its unit where it matters. */
+export function formatAmount(n: number, unit: GoalUnit): string {
+  return `${n}${UNIT_RULES[unit].short}`;
 }

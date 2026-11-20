@@ -1,37 +1,40 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Alert, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { describeDays } from "../../components/pickers";
 import { Button, Card, Eyebrow, PageTitle, Screen, Stepper, styles as ui } from "../../components/ui";
-import { LADDERS, MAX_DAILY_TARGET, MIN_DAILY_TARGET } from "../../program/catalog";
+import { LADDERS } from "../../program/catalog";
 import { fromDayKey, mondayOf } from "../../program/dates";
-import { currentPrescription, dailyTotals, todayPlan } from "../../program/progression";
+import { currentPrescription, formatAmount, goalTotals, todayPlan } from "../../program/progression";
 import type { WorkoutKind } from "../../program/types";
 import { errorMessage, useSocial } from "../../social/SocialProvider";
 import { useAppData } from "../../store/AppDataProvider";
 import { colors, fonts, radius } from "../../theme";
 
 export default function SettingsScreen() {
-  const { data, error, setQuickAdd, setDailyTarget, setLevel, restartProgram } = useAppData();
+  const { data, error, setLevel, restartProgram } = useAppData();
   const signedIn = useSocial().status === "signedIn";
   if (!data) return null;
   const today = todayPlan(data);
 
-  const totals = dailyTotals(data);
   const monday = mondayOf(today.day);
   const monthPrefix = today.day.slice(0, 7);
-  let week = 0;
-  let month = 0;
-  let all = 0;
-  for (const [day, n] of totals) {
-    all += n;
-    if (day >= monday && day <= today.day) week += n;
-    if (day.startsWith(monthPrefix)) month += n;
-  }
+  const sums = today.goals.map(({ goal, target }) => {
+    let week = 0;
+    let month = 0;
+    let all = 0;
+    for (const [day, n] of goalTotals(data, goal.id)) {
+      all += n;
+      if (day >= monday && day <= today.day) week += n;
+      if (day.startsWith(monthPrefix)) month += n;
+    }
+    return { goal, target, week, month, all };
+  });
 
   function confirmRestart() {
     Alert.alert(
       "Start programmet på nytt?",
-      "Nivåer, økter og dagsmål nullstilles og uke 1 starter i dag. Loggede pushups beholdes.",
+      "Nivåer og økter nullstilles, uke 1 starter i dag, og du går gjennom oppsettet på nytt. Målene og loggen beholdes.",
       [
         { text: "Avbryt", style: "cancel" },
         { text: "Start på nytt", style: "destructive", onPress: restartProgram },
@@ -52,43 +55,30 @@ export default function SettingsScreen() {
       ) : null}
 
       <Card>
-        <Eyebrow>Pushups totalt</Eyebrow>
-        <View style={s.stats}>
-          <Stat label="Denne uka" value={week} />
-          <Stat label="Denne måneden" value={month} />
-          <Stat label="Totalt" value={all} />
-        </View>
-      </Card>
-
-      <Card>
-        <Eyebrow>Dagsmål pushups</Eyebrow>
-        <Text style={ui.body}>
-          Justeres automatisk hver uke. Endrer du det her, fortsetter progresjonen fra det nye tallet.
-        </Text>
-        <Stepper
-          value={today.dailyTarget}
-          min={MIN_DAILY_TARGET}
-          max={MAX_DAILY_TARGET}
-          onChange={setDailyTarget}
-          label="dagsmål"
-          suffix="per dag"
-        />
-      </Card>
-
-      <Card>
-        <Eyebrow>Hurtigknapper</Eyebrow>
-        {data.quickAdd.map((n, i) => (
-          <View key={i} style={s.row}>
-            <Text style={s.rowLabel}>Knapp {i + 1}</Text>
-            <Stepper
-              value={n}
-              min={1}
-              max={200}
-              label={`hurtigknapp ${i + 1}`}
-              onChange={(v) => setQuickAdd(data.quickAdd.map((x, j) => (j === i ? v : x)))}
-            />
-          </View>
+        <Eyebrow>Daglige mål</Eyebrow>
+        {sums.length === 0 ? <Text style={ui.body}>Ingen daglige mål ennå.</Text> : null}
+        {sums.map(({ goal, target, week, month, all }) => (
+          <Pressable
+            key={goal.id}
+            accessibilityRole="button"
+            accessibilityLabel={`${goal.name}, mål ${formatAmount(target, goal.unit)}, ${describeDays(goal.days)}. Denne uka ${week}, denne måneden ${month}, totalt ${all}. Endre`}
+            onPress={() => router.push(`/goal/${goal.id}`)}
+            style={({ pressed }) => [s.goal, pressed && { backgroundColor: colors.surfaceSubtle }]}
+          >
+            <View style={s.row}>
+              <Text style={[s.rowLabel, { flex: 1 }]}>{goal.name}</Text>
+              <Text style={s.note}>
+                {formatAmount(target, goal.unit)} · {describeDays(goal.days)} ›
+              </Text>
+            </View>
+            <View style={s.stats}>
+              <Stat label="Denne uka" value={formatAmount(week, goal.unit)} />
+              <Stat label="Måneden" value={formatAmount(month, goal.unit)} />
+              <Stat label="Totalt" value={formatAmount(all, goal.unit)} />
+            </View>
+          </Pressable>
         ))}
+        <Button label="Legg til mål" variant="secondary" onPress={() => router.push("/goal/new")} />
       </Card>
 
       <Card>
@@ -216,7 +206,7 @@ function AccountCard() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
     <View style={{ flex: 1, gap: 2 }}>
       <Text style={s.statValue}>{value}</Text>
@@ -229,7 +219,8 @@ const s = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   rowLabel: { color: colors.text, fontFamily: fonts.bold, fontSize: 16 },
   stats: { flexDirection: "row", gap: 12 },
-  statValue: { color: colors.text, fontFamily: fonts.bold, fontSize: 32, fontVariant: ["tabular-nums"] },
+  statValue: { color: colors.text, fontFamily: fonts.bold, fontSize: 24, fontVariant: ["tabular-nums"] },
+  goal: { gap: 8, paddingVertical: 10, paddingHorizontal: 8, borderRadius: radius.control, borderTopWidth: 1, borderTopColor: colors.line },
   statLabel: { color: colors.muted, fontFamily: fonts.mono, fontSize: 12 },
   note: { color: colors.muted, fontFamily: fonts.regular, fontSize: 14 },
   error: { color: colors.danger, fontFamily: fonts.bold, fontSize: 15 },
